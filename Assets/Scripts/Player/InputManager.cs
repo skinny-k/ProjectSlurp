@@ -31,13 +31,13 @@ public class InputManager : MonoBehaviour
     void Update()
     {
         // Movement and Camera
+        if (_input.actions["Camera"].ReadValue<Vector2>() != Vector2.zero)
+        {
+            OnCameraMove?.Invoke(_input.actions["Camera"].ReadValue<Vector2>());
+        }
         if (_input.actions["Move"].ReadValue<Vector2>() != Vector2.zero)
         {
             OnMove?.Invoke(_input.actions["Move"].ReadValue<Vector2>());
-        }
-        if (_input.actions["Camera"].ReadValue<Vector2>() != Vector2.zero)
-        {
-            OnMove?.Invoke(_input.actions["Camera"].ReadValue<Vector2>());
         }
 
         // Jump & Aerial Maneuvers
