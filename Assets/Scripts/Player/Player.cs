@@ -31,6 +31,14 @@ public class Player : MonoBehaviour
         UnsubscribeToInput();
     }
 
+    void Start()
+    {
+        if (_camera != null)
+        {
+            _camera.SetPlayer(this);
+        }
+    }
+
     protected void SubscribeToInput()
     {
         _input.OnMove += Move;
@@ -61,6 +69,11 @@ public class Player : MonoBehaviour
         _input.OnTravel -= Travel;
     }
 
+    public void Rotate(Vector2 value, float sensitivity)
+    {
+        _movement.Rotate(value, sensitivity);
+    }
+
     protected void Move(Vector2 value)
     {
         _movement.Move(value);
@@ -76,9 +89,9 @@ public class Player : MonoBehaviour
         _movement.Jump();
     }
 
-    protected void SlowFall()
+    protected void SlowFall(bool isSlowFallHeld)
     {
-        _movement.SlowFall();
+        _movement.SlowFall(isSlowFallHeld);
     }
 
     protected void HighJump()
@@ -98,11 +111,12 @@ public class Player : MonoBehaviour
 
     protected void Dash()
     {
-        _actions.Dash();
+        _movement.Dash();
     }
 
     protected void Aim()
     {
+        _camera.Aim();
         _actions.Aim();
     }
 

@@ -14,7 +14,7 @@ public class InputManager : MonoBehaviour
     public event Action<Vector2> OnMove;
     public event Action<Vector2> OnCameraMove;
     public event Action OnJump;
-    public event Action OnSlowFall;
+    public event Action<bool> OnSlowFall;
     public event Action OnHighJump;
     public event Action OnAttack;
     public event Action OnBlock;
@@ -48,7 +48,7 @@ public class InputManager : MonoBehaviour
         if (_input.actions["Slow Fall"].triggered || (_isSlowFallHeld && _input.actions["Slow Fall"].ReadValue<float>() < 0.5f))
         {
             _isSlowFallHeld = !_isSlowFallHeld;
-            OnSlowFall?.Invoke();
+            OnSlowFall?.Invoke(_isSlowFallHeld);
         }
         if (_input.actions["High Jump"].triggered)
         {
@@ -82,5 +82,20 @@ public class InputManager : MonoBehaviour
         {
             OnTravel?.Invoke();
         }
+    }
+
+    public Vector2 GetInputValueAsVector2(String value)
+    {
+        return _input.actions[value].ReadValue<Vector2>();
+    }
+
+    public float GetInputValueAsFloat(String value)
+    {
+        return _input.actions[value].ReadValue<float>();
+    }
+
+    public bool GetInputValueAsBoolean(String value)
+    {
+        return _input.actions[value].ReadValue<bool>();
     }
 }

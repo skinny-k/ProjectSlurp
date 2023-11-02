@@ -2,10 +2,26 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(Player))]
+[RequireComponent(typeof(PlayerMovement))]
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerActions : MonoBehaviour
 {
+    [SerializeField] PlayerCamera _camera;
+
+    private Player _player;
+    private PlayerMovement _movement;
+    private Rigidbody _rb;
+    
     public bool IsBlocking { get; private set; } = false;
     public bool IsAiming { get; private set; } = false;
+
+    void Start()
+    {
+        _player = GetComponent<Player>();
+        _movement = GetComponent<PlayerMovement>();
+        _rb = GetComponent<Rigidbody>();
+    }
     
     public void Attack()
     {
@@ -21,17 +37,20 @@ public class PlayerActions : MonoBehaviour
         Debug.Log(msg + "Block");
     }
 
-    public void Dash()
-    {
-        Debug.Log("Dash");
-    }
-
     public void Aim()
     {
         IsAiming = !IsAiming;
         string msg = "Start ";
-        if (!IsAiming)
+
+        if (IsAiming)
+        {
+            _movement.AddSpeedModifier(_movement.AimSpeedModifier);
+        }
+        else
+        {
+            _movement.RemoveSpeedModifier(_movement.AimSpeedModifier);
             msg = "End ";
+        }
         Debug.Log(msg + "Aim");
     }
 
