@@ -48,14 +48,6 @@ public class PlayerCamera : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (IsAiming)
-        {
-            _followCameraSpringArm.SetYaw(_followCameraSpringArm.FollowObject.transform.rotation.eulerAngles.y);
-        }
-    }
-
     public void SetPlayer(Player player)
     {
         _player = player;
@@ -64,15 +56,16 @@ public class PlayerCamera : MonoBehaviour
     public void Move(Vector2 input)
     {
         input = FixInput(input);
-        if (!IsAiming)
+        if (IsAiming)
         {
-            _followCameraSpringArm.ApplyYaw(input.x * _rotationalSpeed * Time.deltaTime);
-            _followCameraSpringArm.ApplyRoll(input.y * _rotationalSpeed * Time.deltaTime);
+            _aimCameraSpringArm.ApplyYaw(input.x * _aimSensitivity * Time.deltaTime);
+            _aimCameraSpringArm.ApplyRoll(-input.y * _aimSensitivity * Time.deltaTime);
+            _player.Rotate(input, _aimSensitivity);
         }
         else
         {
-            _aimCameraSpringArm.ApplyRoll(-input.y * _aimSensitivity * Time.deltaTime);
-            _player.Rotate(input, _aimSensitivity);
+            _followCameraSpringArm.ApplyYaw(input.x * _rotationalSpeed * Time.deltaTime);
+            _followCameraSpringArm.ApplyRoll(input.y * _rotationalSpeed * Time.deltaTime);
         }
     }
 
@@ -80,19 +73,18 @@ public class PlayerCamera : MonoBehaviour
     {
         IsAiming = !IsAiming;
 
-        string msg = "Start ";
         if (IsAiming)
         {
-            _followCameraSpringArm.SetRoll(_aimReturnRoll);
+            _aimCameraSpringArm.SetYaw(_followCameraSpringArm.transform.rotation.eulerAngles.y);
+            _aimCameraSpringArm.SetRoll(0);
             _aimCamera.Priority = 11;
         }
         else
         {
+            _followCameraSpringArm.SetYaw(_aimCameraSpringArm.transform.rotation.eulerAngles.y);
+            _followCameraSpringArm.SetRoll(_aimReturnRoll);
             _aimCamera.Priority = 0;
-            _aimCameraSpringArm.SetRoll(0);
-            msg = "End ";
         }
-        Debug.Log(msg + "Aim");
     }
 
     private Vector2 FixInput(Vector2 input)

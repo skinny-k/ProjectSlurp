@@ -35,8 +35,10 @@ public class PlayerMovement : MonoBehaviour
 
     private List<float> _speedModifiers = new List<float>();
     private float _netSpeedModifier = 1f;
-
+    
     private int _currentJumps = 0;
+
+    private Vector3 targetRot;
     
     public bool IsGrounded { get; private set; } = true;
     public bool IsHighJumping { get; private set; } = false;
@@ -49,6 +51,11 @@ public class PlayerMovement : MonoBehaviour
         _player = GetComponent<Player>();
         _actions = GetComponent<PlayerActions>();
         _rb = GetComponent<Rigidbody>();
+    }
+
+    void Update()
+    {
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(targetRot), _turnSpeed * Time.deltaTime);
     }
 
     void FixedUpdate()
@@ -83,6 +90,16 @@ public class PlayerMovement : MonoBehaviour
             SlowFall(false);
         }
     }
+
+    public void AddRotation(Vector2 input, float sensitivity)
+    {
+        targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
+    }
+
+    public void RotateTo(Vector3 rotation)
+    {
+        targetRot = rotation;
+    }
     
     public void Move(Vector2 input)
     {
@@ -101,22 +118,24 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void Rotate(Vector2 input, float sensitivity)
-    {
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(transform.rotation.eulerAngles + new Vector3(0, input.x * sensitivity, 0)), sensitivity * Time.deltaTime);
-    }
-
     public void Jump()
     {
         if (!IsDashing && _currentJumps < _maxJumps)
         {
-            if (_airSpeedModifier != 1f)
+            if (!IsGrounded)
             {
-                AddSpeedModifier(_airSpeedModifier);
+                _currentJumps = _maxJumps;
+            }
+            else 
+            {
+                if (_airSpeedModifier != 1f)
+                {
+                    AddSpeedModifier(_airSpeedModifier);
+                }
+                _currentJumps++;
             }
             
             _rb.velocity = Vector3.up * _jumpForce;
-            _currentJumps++;
             IsGrounded = false;
 
             Debug.Log("Jump");

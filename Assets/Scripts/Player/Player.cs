@@ -71,7 +71,7 @@ public class Player : MonoBehaviour
 
     public void Rotate(Vector2 value, float sensitivity)
     {
-        _movement.Rotate(value, sensitivity);
+        _movement.AddRotation(value, sensitivity);
     }
 
     protected void Move(Vector2 value)
