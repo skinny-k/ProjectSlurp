@@ -13,6 +13,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     private Rigidbody _rb;
     private Quaternion _throwRotation;
 
+    public Transform TravelNode { get; private set; }
     public bool IsAiming { get; private set; } = false;
     public bool IsHeld { get; private set; } = true;
     public bool IsInTransit { get; private set; } = false;
@@ -50,6 +51,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     void Start()
     {
         _rb = GetComponent<Rigidbody>();
+        TravelNode = transform.Find("Travel Node");
 
         transform.localRotation = Quaternion.Euler(_baseRotation);
     }
@@ -80,7 +82,8 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             if (IsInTransit)
             {
                 _rb.velocity = Vector3.zero;
-                transform.SetParent(collision.transform);
+                transform.SetParent(collision.transform, true);
+                transform.localScale = (new Vector3(1 / collision.transform.localScale.x, 1 / collision.transform.localScale.y, 1 / collision.transform.localScale.z));
                 IsInTransit = false;
             }
             else if (collision.gameObject.GetComponent<PlayerActions>() != null)

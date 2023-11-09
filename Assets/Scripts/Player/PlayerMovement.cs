@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 [RequireComponent(typeof(Player))]
 [RequireComponent(typeof(Rigidbody))]
@@ -28,6 +30,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _dashSpeed = 15f;
     [SerializeField] float _dashAcceleration = 20f;
 
+    [Header("Travel Settings")]
+    [SerializeField] float _travelSpeed = 25f;
+    [SerializeField] float _travelAcceleration = 35f;
+
     private InputManager _input;
     private Player _player;
     private PlayerActions _actions;
@@ -38,12 +44,17 @@ public class PlayerMovement : MonoBehaviour
     
     private int _currentJumps = 0;
 
-    private Vector3 targetRot;
+    private Vector3 _targetRot;
+    private Vector3 _moveDir = Vector3.zero;
     
     public bool IsGrounded { get; private set; } = true;
     public bool IsHighJumping { get; private set; } = false;
     public bool IsSlowFalling { get; private set; } = false;
     public bool IsDashing { get; private set; } = false;
+    public bool IsTraveling { get; private set; } = false;
+
+    public bool CanMove => !IsDashing && !IsTraveling;
+    public bool IsInActiveAerial => IsHighJumping && IsSlowFalling;
 
     void Start()
     {
@@ -51,11 +62,16 @@ public class PlayerMovement : MonoBehaviour
         _player = GetComponent<Player>();
         _actions = GetComponent<PlayerActions>();
         _rb = GetComponent<Rigidbody>();
+
+        _moveDir = transform.forward;
     }
 
     void Update()
     {
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(targetRot), _turnSpeed * Time.deltaTime);
+        if (_actions.IsAiming)
+        {
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(_targetRot), _turnSpeed * Time.deltaTime);
+        }
     }
 
     void FixedUpdate()
@@ -74,9 +90,19 @@ public class PlayerMovement : MonoBehaviour
         {
             _rb.velocity = Vector3.MoveTowards(_rb.velocity, transform.forward * _dashSpeed, _dashAcceleration * Time.deltaTime);
         }
-        else
+        else if (!IsTraveling)
         {
             _rb.velocity = Vector3.MoveTowards(_rb.velocity, new Vector3(0, _rb.velocity.y, 0), _dashAcceleration * Time.deltaTime);
+        }
+
+        if (IsTraveling)
+        {
+            Vector3 dir = (_actions.PlayerWeapon.TravelNode.position - transform.position).normalized;
+            _rb.velocity = Vector3.MoveTowards(_rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
+        }
+        else if (!IsDashing)
+        {
+            _rb.velocity = Vector3.MoveTowards(_rb.velocity, new Vector3(0, _rb.velocity.y, 0), _travelAcceleration * Time.deltaTime);
         }
     }
 
@@ -93,34 +119,37 @@ public class PlayerMovement : MonoBehaviour
 
     public void AddRotation(Vector2 input, float sensitivity)
     {
-        targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
+        _targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
     }
 
     public void RotateTo(Vector3 rotation)
     {
-        targetRot = rotation;
+        _targetRot = rotation;
     }
     
     public void Move(Vector2 input)
     {
-        if (!IsDashing)
+        if (CanMove)
         {
             input = input.normalized;
             float speedThisFrame = _moveSpeed * _netSpeedModifier;
-            Vector3 dir = _player.Camera.transform.TransformVector(new Vector3(input.x, 0, input.y));
-            dir = (new Vector3(dir.x, 0, dir.z)).normalized;
-            transform.position += dir * speedThisFrame * Time.deltaTime;
+            if (!_player.Camera.IsMovingToDefault)
+            {
+                _moveDir = _player.Camera.transform.TransformVector(new Vector3(input.x, 0, input.y));
+            }
+            _moveDir = (new Vector3(_moveDir.x, 0, _moveDir.z)).normalized;
+            transform.position += _moveDir * speedThisFrame * Time.deltaTime;
 
             if (!_actions.IsAiming)
             {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir, Vector3.up), _turnSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(_moveDir, Vector3.up), _turnSpeed * Time.deltaTime);
             }
         }
     }
 
     public void Jump()
     {
-        if (!IsDashing && _currentJumps < _maxJumps)
+        if (!IsDashing && !IsTraveling && _currentJumps < _maxJumps)
         {
             if (!IsGrounded)
             {
@@ -144,7 +173,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void SlowFall(bool isSlowFallHeld)
     {
-        if (!_actions.IsAiming && IsSlowFalling != isSlowFallHeld)
+        if (!_actions.IsAiming && IsSlowFalling != isSlowFallHeld && !IsTraveling)
         {
             IsSlowFalling = isSlowFallHeld;
 
@@ -177,7 +206,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void HighJump()
     {
-        if (!_actions.IsAiming && IsGrounded && _input.GetInputValueAsVector2("Move") == Vector2.zero)
+        if (!_actions.IsAiming && IsGrounded && !IsDashing && !IsTraveling && _input.GetInputValueAsVector2("Move") == Vector2.zero)
         {
             if (_airSpeedModifier != 1f)
             {
@@ -195,11 +224,27 @@ public class PlayerMovement : MonoBehaviour
 
     public void Dash()
     {
-        if (!_actions.IsAiming && !IsHighJumping)
+        if (!_actions.IsAiming && !IsHighJumping && !IsTraveling)
         {
             StartCoroutine(DoDash());
             Debug.Log("Dash");
         }
+    }
+
+    public void Travel()
+    {
+        if (!IsTraveling)
+        {
+            IsTraveling = true;
+            Debug.Log("Start Travel");
+        }
+    }
+
+    public void EndTravel()
+    {
+        _rb.velocity = Vector3.zero;
+        IsTraveling = false;
+        Debug.Log("End Travel");
     }
 
     public void AddSpeedModifier(float modifier)

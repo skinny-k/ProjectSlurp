@@ -7,6 +7,11 @@ using UnityEngine;
 public class PlayerCamera : MonoBehaviour
 {
     [SerializeField] float _rotationalSpeed = 180f;
+    [Tooltip("The roll in degrees that the camera should return to when the player is not providing camera input while moving or is not aiming.")]
+    [SerializeField] float _defaultRoll = 15f;
+    [Tooltip("The time in seconds that the camera should wait before returning to its default.")]
+    [SerializeField] public float ResetDelay = 2f;
+    [SerializeField] float _resetLerpAlpha = 0.05f;
     [Tooltip("If the absolute value of the vertical camera input is at least this value, horizontal input will be discarded.")]
     [SerializeField] float _verticalMaxout = 0.8f;
     [Tooltip("If the absolute value of the horizontal camera input is at least this value, vertical input will be discarded.")]
@@ -14,8 +19,6 @@ public class PlayerCamera : MonoBehaviour
     
     [Header("Aim Settings")]
     [SerializeField] float _aimSensitivity = 90f;
-    [Tooltip("The roll, in degrees, that the camera should return to when the player stops aiming")]
-    [SerializeField] float _aimReturnRoll = 20f;
 
     [Header("Cameras")]
     [SerializeField] CinemachineVirtualCamera _followCamera;
@@ -24,6 +27,7 @@ public class PlayerCamera : MonoBehaviour
     [SerializeField] SpringArm _aimCameraSpringArm;
 
     public bool IsAiming { get; private set; } = false;
+    public bool IsMovingToDefault { get; private set; } = false;
 
     private Player _player;
 
@@ -46,6 +50,32 @@ public class PlayerCamera : MonoBehaviour
         {
             _aimCamera = _aimCameraSpringArm.GetComponentInChildren<CinemachineVirtualCamera>();
         }
+
+        if (_followCameraSpringArm != null)
+        {
+            _followCameraSpringArm.transform.rotation = Quaternion.Euler(_defaultRoll, transform.position.y, 0);
+        }
+    }
+
+    void Update()
+    {
+        if (IsMovingToDefault)
+        {
+            float targetYaw = Mathf.Lerp(transform.rotation.eulerAngles.y, _player.transform.rotation.eulerAngles.y, _resetLerpAlpha);
+            if (Mathf.Abs(transform.rotation.eulerAngles.y - _player.transform.rotation.eulerAngles.y) > 180f)
+            {
+                targetYaw = Mathf.Lerp(transform.rotation.eulerAngles.y + 360f, _player.transform.rotation.eulerAngles.y, _resetLerpAlpha);
+            }
+            float targetRoll = Mathf.Lerp(transform.rotation.eulerAngles.x, _defaultRoll, _resetLerpAlpha);
+            
+            _followCameraSpringArm.SetYaw(targetYaw);
+            _followCameraSpringArm.SetRoll(targetRoll);
+
+            if (targetYaw == _player.transform.rotation.eulerAngles.y && targetRoll == _defaultRoll)
+            {
+                IsMovingToDefault = false;
+            }
+        }
     }
 
     public void SetPlayer(Player player)
@@ -55,6 +85,7 @@ public class PlayerCamera : MonoBehaviour
 
     public void Move(Vector2 input)
     {
+        IsMovingToDefault = false;
         input = FixInput(input);
         if (IsAiming)
         {
@@ -67,6 +98,11 @@ public class PlayerCamera : MonoBehaviour
             _followCameraSpringArm.ApplyYaw(input.x * _rotationalSpeed * Time.deltaTime);
             _followCameraSpringArm.ApplyRoll(input.y * _rotationalSpeed * Time.deltaTime);
         }
+    }
+
+    public void MoveToDefault()
+    {
+        IsMovingToDefault = true;
     }
 
     public void Aim()
@@ -82,7 +118,7 @@ public class PlayerCamera : MonoBehaviour
         else
         {
             _followCameraSpringArm.SetYaw(_aimCameraSpringArm.transform.rotation.eulerAngles.y);
-            _followCameraSpringArm.SetRoll(_aimReturnRoll);
+            _followCameraSpringArm.SetRoll(_defaultRoll);
             _aimCamera.Priority = 0;
         }
     }

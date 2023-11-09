@@ -16,6 +16,8 @@ public class Player : MonoBehaviour
     protected bool _isAiming;
 
     public PlayerCamera Camera => _camera;
+
+    private float _lastCameraMove = 0;
     
     protected void OnEnable()
     {
@@ -36,6 +38,15 @@ public class Player : MonoBehaviour
         if (_camera != null)
         {
             _camera.SetPlayer(this);
+        }
+    }
+
+    void Update()
+    {
+        if (_lastCameraMove != 0 && _input.GetInputValueAsVector2("Move") == Vector2.zero)
+        {
+            _lastCameraMove = 0;
+            MoveCamera(Vector2.zero);
         }
     }
 
@@ -77,11 +88,21 @@ public class Player : MonoBehaviour
     protected void Move(Vector2 value)
     {
         _movement.Move(value);
+
+        if (_input.GetInputValueAsVector2("Camera") == Vector2.zero && _lastCameraMove < _camera.ResetDelay)
+        {
+            _lastCameraMove += Time.deltaTime;
+            if (_lastCameraMove >= _camera.ResetDelay)
+            {
+                _camera.MoveToDefault();
+            }
+        }
     }
 
     protected void MoveCamera(Vector2 value)
     {
         _camera.Move(value);
+        _lastCameraMove = 0;
     }
 
     protected void Jump()
@@ -127,6 +148,6 @@ public class Player : MonoBehaviour
 
     protected void Travel()
     {
-        _actions.Travel();
+        _movement.Travel();
     }
 }
