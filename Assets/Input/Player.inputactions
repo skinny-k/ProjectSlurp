@@ -29,7 +29,7 @@
                     "id": "6071a9f2-007b-4246-941e-c904d11a1713",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "Tap",
+                    "interactions": "",
                     "initialStateCheck": false
                 },
                 {
@@ -38,7 +38,7 @@
                     "id": "c022bd05-af6a-4925-b5cd-ba3d629f60d1",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "Hold(duration=0.3)",
+                    "interactions": "Hold(duration=0.75,pressPoint=0.5)",
                     "initialStateCheck": false
                 },
                 {
@@ -471,8 +471,30 @@
                 },
                 {
                     "name": "",
+                    "id": "0734d67e-ca81-45a9-a18e-19414e774b01",
+                    "path": "<Gamepad>/leftShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Slow Fall",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "31cc0327-f392-4af0-afab-e8d518976391",
                     "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Slow Fall",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1f851a93-8fff-4587-87ac-57d2c32a0789",
+                    "path": "<Keyboard>/shift",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -526,7 +548,7 @@
                 },
                 {
                     "name": "Gamepad",
-                    "id": "4d2a18ac-5f93-458c-9264-408193ae8355",
+                    "id": "224935c3-5676-41dd-b15c-c06bfb25855f",
                     "path": "OneModifier",
                     "interactions": "",
                     "processors": "",
@@ -537,8 +559,19 @@
                 },
                 {
                     "name": "modifier",
-                    "id": "4ccff61d-ba27-46c2-b755-23eac9c106e5",
+                    "id": "926ed395-d43f-440c-9a8a-30cfb8f811af",
                     "path": "<Gamepad>/leftTrigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throw",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "87cbbca4-c89a-4099-9dbf-1ad8d2f9f17b",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
