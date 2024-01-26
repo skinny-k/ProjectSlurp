@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// duplicates the Spring Arm component from Unreal Engine using the Cinemachine system
 public class SpringArm : MonoBehaviour
 {
     [SerializeField] CinemachineVirtualCamera _camera;
@@ -22,6 +23,29 @@ public class SpringArm : MonoBehaviour
     
     void OnValidate()
     {
+        InitializeCameraSettings();
+    }
+
+    void Start()
+    {
+        InitializeCameraSettings();
+    }
+
+    void Update()
+    {
+        // follows the desired object, if it is set
+        if (FollowObject != null)
+        {
+            transform.position = Vector3.Lerp(transform.position, FollowObject.transform.position, _followLerpAlpha);
+        }
+
+        // rotates toward the desired rotation
+        transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.Euler(new Vector3(roll, yaw, 0)), _slerpAlpha);
+    }
+
+    void InitializeCameraSettings()
+    {
+        // finds the primary camera and sets the desired spring arm length
         if (_camera == null)
         {
             _camera = GetComponentInChildren<CinemachineVirtualCamera>(true);
@@ -31,60 +55,45 @@ public class SpringArm : MonoBehaviour
             _camera.transform.localPosition = new Vector3(_camera.transform.localPosition.x, _camera.transform.localPosition.y, -_targetArmLength);
         }
 
+        // sets the initial rotation of the spring arm
         roll = Mathf.Clamp(transform.localRotation.eulerAngles.x, _minRoll, _maxRoll);
         yaw = transform.localRotation.eulerAngles.y;
         transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
-    }
-
-    void Start()
-    {
-        if (_camera == null)
-        {
-            _camera = GetComponentInChildren<CinemachineVirtualCamera>(true);
-        }
-        _camera.transform.localPosition = new Vector3(_camera.transform.localPosition.x, _camera.transform.localPosition.y, -_targetArmLength);
-        roll = Mathf.Clamp(transform.localRotation.eulerAngles.x, _minRoll, _maxRoll);
-        yaw = transform.localRotation.eulerAngles.y;
-        transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
-    }
-
-    void Update()
-    {
-        if (FollowObject != null)
-        {
-            transform.position = Vector3.Lerp(transform.position, FollowObject.transform.position, _followLerpAlpha);
-        }
-
-        transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.Euler(new Vector3(roll, yaw, 0)), _slerpAlpha);
     }
 
     public void ApplyRoll(float degrees)
     {
+        // adds degrees to the desired roll
         roll = Mathf.Clamp(roll + degrees, _minRoll, _maxRoll) % 360;
     }
 
     public void SetRoll(float degrees, bool blend = false)
     {
+        // sets the desired roll to the input degrees
         roll = degrees % 360;
 
         if (!blend)
         {
+            // immediately sets the camera's rotation to the desired roll without blending
             transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
         }
     }
 
     public void ApplyYaw(float degrees)
     {
+        // adds degrees to the desired yaw
         yaw += degrees;
         yaw %= 360;
     }
 
     public void SetYaw(float degrees, bool blend = false)
     {
+        // sets the desired yaw to the input degrees
         yaw = degrees % 360;
 
         if (!blend)
         {
+            // immediately sets the camera's rotation to the desired yaw without blending
             transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
         }
     }

@@ -2,22 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Coordinates responses by player component classes to input events from Input Manager
 [RequireComponent(typeof(InputManager))]
 [RequireComponent(typeof(PlayerMovement))]
 [RequireComponent(typeof(PlayerActions))]
-public class Player : MonoBehaviour
+public class Player : Entity
 {
     [SerializeField] PlayerCamera _camera;
     
     protected InputManager _input;
     protected PlayerMovement _movement;
     protected PlayerActions _actions;
-    protected bool _isBlocking;
-    protected bool _isAiming;
 
     public PlayerCamera Camera => _camera;
-
-    private float _lastCameraMove = 0;
     
     protected void OnEnable()
     {
@@ -41,6 +38,8 @@ public class Player : MonoBehaviour
         }
     }
 
+    /*
+    // resets the camera to default if necessary
     void Update()
     {
         if (_lastCameraMove != 0 && _input.GetInputValueAsVector2("Move") == Vector2.zero)
@@ -49,6 +48,7 @@ public class Player : MonoBehaviour
             MoveCamera(Vector2.zero);
         }
     }
+    */
 
     protected void SubscribeToInput()
     {
@@ -80,15 +80,20 @@ public class Player : MonoBehaviour
         _input.OnTravel -= Travel;
     }
 
+    // allows the player to be rotated by force
+    // useful for rotating the player while aiming
     public void Rotate(Vector2 value, float sensitivity)
     {
         _movement.AddRotation(value, sensitivity);
     }
 
+    // helper functions that coordinate responses to input from the player component classes
     protected void Move(Vector2 value)
     {
         _movement.Move(value);
 
+        /*
+        // resets the camera to its default rotation after a delay while moving
         if (_input.GetInputValueAsVector2("Camera") == Vector2.zero && _lastCameraMove < _camera.ResetDelay)
         {
             _lastCameraMove += Time.deltaTime;
@@ -97,12 +102,13 @@ public class Player : MonoBehaviour
                 _camera.MoveToDefault();
             }
         }
+        */
     }
 
     protected void MoveCamera(Vector2 value)
     {
         _camera.Move(value);
-        _lastCameraMove = 0;
+        // _lastCameraMove = 0;
     }
 
     protected void Jump()

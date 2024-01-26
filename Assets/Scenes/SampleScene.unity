@@ -510,8 +510,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   PlayerWeapon: {fileID: 374523828}
-  _throwSpeed: 4
-  _maxThrowDistance: 30
 --- !u!114 &163448010
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -688,6 +686,7 @@ Transform:
   m_Children:
   - {fileID: 741413932}
   - {fileID: 905862940}
+  - {fileID: 781375207}
   m_Father: {fileID: 163448006}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: -70, y: 0, z: 0}
@@ -720,6 +719,8 @@ MonoBehaviour:
   _baseRotation: {x: -70, y: 0, z: 0}
   _aimedRotation: {x: -20, y: 0, z: 0}
   _holdPosition: {x: 1.4, y: 0.6, z: 0}
+  _returnTime: 0.15
+  Owner: {fileID: 163448008}
 --- !u!54 &374523829
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -914,7 +915,7 @@ GameObject:
   - component: {fileID: 588515890}
   - component: {fileID: 588515889}
   - component: {fileID: 588515888}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Floor
   m_TagString: Walkable
   m_Icon: {fileID: 0}
@@ -1285,7 +1286,7 @@ GameObject:
   - component: {fileID: 741413934}
   - component: {fileID: 741413933}
   m_Layer: 6
-  m_Name: Cylinder
+  m_Name: Art
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1370,6 +1371,65 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 741413931}
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &781375206
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 781375207}
+  - component: {fileID: 781375209}
+  - component: {fileID: 781375208}
+  m_Layer: 6
+  m_Name: Hurt Box
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &781375207
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 781375206}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 374523826}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &781375208
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 781375206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a78293c92d9b54620bac47af0ecd3631, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hitsTeams: 2
+--- !u!65 &781375209
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 781375206}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 0.5, y: 0.5, z: 2.4}
+  m_Center: {x: 0, y: 0, z: 1.325}
 --- !u!1 &861272564
 GameObject:
   m_ObjectHideFlags: 0
@@ -1380,7 +1440,7 @@ GameObject:
   m_Component:
   - component: {fileID: 861272566}
   - component: {fileID: 861272565}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1427,7 +1487,7 @@ GameObject:
   - component: {fileID: 887911058}
   - component: {fileID: 887911061}
   - component: {fileID: 887911060}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Art
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1665,7 +1725,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _rotationalSpeed: 180
   _defaultRoll: 20
-  ResetDelay: 1
   _resetLerpAlpha: 0.015
   _verticalMaxout: 0.8
   _horizontalMaxout: 0.8
