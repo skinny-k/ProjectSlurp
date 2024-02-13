@@ -163,7 +163,13 @@ public class PlayerMovement : MonoBehaviour
             float speedThisFrame = _moveSpeed * _netSpeedModifier;
             if (!_player.Camera.IsMovingToDefault)
             {
-                _moveDir = _player.Camera.transform.TransformVector(new Vector3(input.x, 0, input.y));
+                Vector3 inputDir = new Vector3(input.x, 0, input.y);
+                if (Mathf.Approximately(Mathf.Abs(_player.Camera.transform.forward.y), 1.0f))
+                {
+                    inputDir = new Vector3(input.x, input.y, 0);
+                }
+
+                _moveDir = _player.Camera.transform.TransformDirection(inputDir);
             }
             _moveDir = (new Vector3(_moveDir.x, 0, _moveDir.z)).normalized;
             transform.position += _moveDir * speedThisFrame * Time.deltaTime;
