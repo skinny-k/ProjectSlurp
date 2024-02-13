@@ -7,7 +7,12 @@ using UnityEngine;
 public class SpringArm : MonoBehaviour
 {
     [SerializeField] CinemachineVirtualCamera _camera;
-    [SerializeField] float _targetArmLength = 10f;
+    [SerializeField] Vector3 _minimumArmLength = new Vector3(0, 0, 0.5f);
+    [SerializeField] Vector3 _targetArmLength = new Vector3(0, 0, -10);
+
+    [Header("Collision Settings")]
+    [SerializeField] float _collisionOffset = 0.1f;
+    [SerializeField] LayerMask layers;
 
     [Header("Follow Settings")]
     [SerializeField] public GameObject FollowObject;
@@ -18,8 +23,8 @@ public class SpringArm : MonoBehaviour
     [SerializeField] float _maxRoll = 90f;
     [SerializeField] float _minRoll = -90f;
 
-    private float roll = 0f;
-    private float yaw = 0f;
+    private float _roll = 0f;
+    private float _yaw = 0f;
     
     void OnValidate()
     {
@@ -40,7 +45,11 @@ public class SpringArm : MonoBehaviour
         }
 
         // rotates toward the desired rotation
-        transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.Euler(new Vector3(roll, yaw, 0)), _slerpAlpha);
+        transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.Euler(new Vector3(_roll, _yaw, 0)), _slerpAlpha);
+
+        // lerp towards maximum possible arm length
+        Vector3 armPos = UpdateArmLength();
+        _camera.transform.localPosition = Vector3.Slerp(_camera.transform.localPosition, armPos, _slerpAlpha);
     }
 
     void InitializeCameraSettings()
@@ -52,49 +61,62 @@ public class SpringArm : MonoBehaviour
         }
         if (_camera != null)
         {
-            _camera.transform.localPosition = new Vector3(_camera.transform.localPosition.x, _camera.transform.localPosition.y, -_targetArmLength);
+            _camera.transform.localPosition = _targetArmLength;
         }
 
         // sets the initial rotation of the spring arm
-        roll = Mathf.Clamp(transform.localRotation.eulerAngles.x, _minRoll, _maxRoll);
-        yaw = transform.localRotation.eulerAngles.y;
-        transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
+        _roll = Mathf.Clamp(transform.localRotation.eulerAngles.x, _minRoll, _maxRoll);
+        _yaw = transform.localRotation.eulerAngles.y;
+        transform.localRotation = Quaternion.Euler(new Vector3(_roll, _yaw, 0));
+    }
+
+    private Vector3 UpdateArmLength()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(FollowObject.transform.position, transform.TransformDirection(_targetArmLength), out hit, _targetArmLength.magnitude))
+        {
+            return _targetArmLength.normalized * (hit.distance - _collisionOffset);
+        }
+        else
+        {
+            return _targetArmLength;
+        }
     }
 
     public void ApplyRoll(float degrees)
     {
         // adds degrees to the desired roll
-        roll = Mathf.Clamp(roll + degrees, _minRoll, _maxRoll) % 360;
+        _roll = Mathf.Clamp(_roll + degrees, _minRoll, _maxRoll) % 360;
     }
 
     public void SetRoll(float degrees, bool blend = false)
     {
         // sets the desired roll to the input degrees
-        roll = degrees % 360;
+        _roll = degrees % 360;
 
         if (!blend)
         {
             // immediately sets the camera's rotation to the desired roll without blending
-            transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
+            transform.localRotation = Quaternion.Euler(new Vector3(_roll, _yaw, 0));
         }
     }
 
     public void ApplyYaw(float degrees)
     {
         // adds degrees to the desired yaw
-        yaw += degrees;
-        yaw %= 360;
+        _yaw += degrees;
+        _yaw %= 360;
     }
 
     public void SetYaw(float degrees, bool blend = false)
     {
         // sets the desired yaw to the input degrees
-        yaw = degrees % 360;
+        _yaw = degrees % 360;
 
         if (!blend)
         {
             // immediately sets the camera's rotation to the desired yaw without blending
-            transform.localRotation = Quaternion.Euler(new Vector3(roll, yaw, 0));
+            transform.localRotation = Quaternion.Euler(new Vector3(_roll, _yaw, 0));
         }
     }
 }

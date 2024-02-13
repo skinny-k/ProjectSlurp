@@ -124,7 +124,7 @@ public class PlayerCamera : MonoBehaviour
             // camera as the active camera
             _aimCameraSpringArm.SetYaw(_followCameraSpringArm.transform.rotation.eulerAngles.y);
             _aimCameraSpringArm.SetRoll(0);
-            _aimCamera.Priority = 11;
+            _aimCamera.Priority = 20;
         }
         else
         {
