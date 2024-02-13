@@ -5,7 +5,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // Handles player movement and movement abilities
-[RequireComponent(typeof(Player))]
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovement : MonoBehaviour
 {

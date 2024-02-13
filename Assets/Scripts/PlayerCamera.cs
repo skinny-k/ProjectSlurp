@@ -136,6 +136,12 @@ public class PlayerCamera : MonoBehaviour
         }
     }
 
+    public void ShoulderSwitch()
+    {
+        Vector3 newArm = _aimCameraSpringArm.ArmOffsetProportions;
+        newArm.x *= -1;
+    }
+
     // forces the input to be read as purely vertical or purely horizontal if it is close enough
     // this is helpful for camera input, as it allows the player to pan straight up, straight down or straight to
     // the side much more easily

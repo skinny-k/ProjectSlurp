@@ -63,6 +63,7 @@ public class Player : Entity
         _input.OnAim += Aim;
         _input.OnThrow += Throw;
         _input.OnTravel += Travel;
+        _input.OnShoulderSwitch += ShoulderSwitch;
     }
 
     protected void UnsubscribeToInput()
@@ -78,6 +79,7 @@ public class Player : Entity
         _input.OnAim -= Aim;
         _input.OnThrow -= Throw;
         _input.OnTravel -= Travel;
+        _input.OnShoulderSwitch -= ShoulderSwitch;
     }
 
     // allows the player to be rotated by force
@@ -155,5 +157,10 @@ public class Player : Entity
     protected void Travel()
     {
         _movement.Travel();
+    }
+
+    protected void ShoulderSwitch()
+    {
+        _camera.ShoulderSwitch();
     }
 }

@@ -129,9 +129,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce06c22fe2d2e4e0089bb4d675d143fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _camera: {fileID: 2547741051952405082}
-  _targetArmLength: 10
-  _followObject: {fileID: 0}
+  _camera: {fileID: 0}
+  _minimumArmLength: {x: 0, y: 0, z: 0.5}
+  _targetArmLength: {x: 0, y: 0, z: -10}
+  _collisionOffset: 0.1
+  layers:
+    serializedVersion: 2
+    m_Bits: 257
+  FollowObject: {fileID: 0}
   _followLerpAlpha: 0.1
   _slerpAlpha: 0.1
   _maxRoll: 90

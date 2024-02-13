@@ -24,6 +24,7 @@ public class InputManager : MonoBehaviour
     public event Action OnAim;
     public event Action OnThrow;
     public event Action OnTravel;
+    public event Action OnShoulderSwitch;
 
     void OnValidate()
     {
@@ -92,6 +93,12 @@ public class InputManager : MonoBehaviour
         if (_input.actions["Travel"].triggered)
         {
             OnTravel?.Invoke();
+        }
+
+        // Shoulder Switch
+        if (_input.actions["Shoulder Switch"].triggered)
+        {
+            OnShoulderSwitch?.Invoke();
         }
     }
 

@@ -2,8 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(Player))]
-[RequireComponent(typeof(PlayerMovement))]
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerActions : MonoBehaviour
 {
