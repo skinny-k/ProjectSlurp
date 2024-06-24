@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// A zone that will take control of the player camera to give a cinematic view
 [RequireComponent(typeof(Collider))]
 public class CinematicCameraZone : MonoBehaviour
 {
