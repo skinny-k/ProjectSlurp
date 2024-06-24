@@ -14,6 +14,8 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     [Tooltip("The time in seconds that it should take for the weapon to return to the owning player.")]
     [SerializeField] float _returnTime = 0.25f;
 
+    // TODO: enable/disable hurt box based on weapon context
+    private DamageVolume _hurtbox;
     private Rigidbody _rb;
     private Quaternion _throwRotation;
     private Vector3 _lastThrownFrom;
@@ -33,6 +35,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     {
         // initialize weapon settings
         _rb = GetComponent<Rigidbody>();
+        _hurtbox = transform.Find("Hurt Box").GetComponent<DamageVolume>();
         TravelNode = transform.Find("Travel Node");
 
         transform.localRotation = Quaternion.Euler(_baseRotation);
