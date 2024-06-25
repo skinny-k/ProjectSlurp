@@ -1641,6 +1641,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2130351207168525758, guid: 3e21f51a5c7f94f28913103eb7c0fb99, type: 3}
+      propertyPath: _holdPosition.y
+      value: 2.4
+      objectReference: {fileID: 0}
     - target: {fileID: 2130351207501661888, guid: 3e21f51a5c7f94f28913103eb7c0fb99, type: 3}
       propertyPath: _camera
       value: 
@@ -1806,7 +1810,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6966556420452096233, guid: d3c99733a12174c15a11d87f06de9ace, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.17339912
+      value: 0.17339914
       objectReference: {fileID: 0}
     - target: {fileID: 6966556420452096233, guid: d3c99733a12174c15a11d87f06de9ace, type: 3}
       propertyPath: m_LocalRotation.y
@@ -1869,6 +1873,10 @@ PrefabInstance:
       propertyPath: _followCameraSpringArm
       value: 
       objectReference: {fileID: 978856493}
+    - target: {fileID: 7407139796480914569, guid: e81434f004d484da1865212dbc634d08, type: 3}
+      propertyPath: m_DefaultBlend.m_Time
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 7407139796480914571, guid: e81434f004d484da1865212dbc634d08, type: 3}
       propertyPath: m_RootOrder
       value: 6
@@ -1891,7 +1899,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7407139796480914571, guid: e81434f004d484da1865212dbc634d08, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.17339912
+      value: 0.17339914
       objectReference: {fileID: 0}
     - target: {fileID: 7407139796480914571, guid: e81434f004d484da1865212dbc634d08, type: 3}
       propertyPath: m_LocalRotation.y

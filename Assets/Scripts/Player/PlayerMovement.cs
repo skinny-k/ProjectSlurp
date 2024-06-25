@@ -170,7 +170,7 @@ public class PlayerMovement : MonoBehaviour
             if (!_player.Camera.IsMovingToDefault)
             {
                 Vector3 inputDir = new Vector3(input.x, 0, input.y);
-                if (Mathf.Approximately(Mathf.Abs(_player.Camera.transform.forward.y), 1.0f))
+                if (Mathf.Approximately(Mathf.Abs(_player.Camera.GetForward().y), 1.0f))
                 {
                     inputDir = new Vector3(input.x, input.y, 0);
                 }
@@ -306,12 +306,15 @@ public class PlayerMovement : MonoBehaviour
 
     public void EndTravel()
     {
-        _player.Rb.velocity = Vector3.zero;
-        IsTraveling = false;
-        Debug.Log("End Travel");
+        if (IsTraveling)
+        {
+            _player.Rb.velocity = Vector3.zero;
+            IsTraveling = false;
+            Debug.Log("End Travel");
 
-        HapticsManager.StopRumble(_travelHaptics);
-        HapticsManager.TimedRumble(_player.HapticsSettings.I_impact, _player.HapticsSettings.I_duration);
+            HapticsManager.StopRumble(_travelHaptics);
+            HapticsManager.TimedRumble(_player.HapticsSettings.I_impact, _player.HapticsSettings.I_duration);
+        }
     }
 
     // helper functions to apply and remove multiple speed modifiers more easily

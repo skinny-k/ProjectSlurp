@@ -16,17 +16,15 @@ MonoBehaviour:
   _attackDuration: 0.15
   _blockStrength: 0.6
   _blockDuration: 0.15
-  _throwStrength: 0.3
-  _throwDuration: 0.25
-  _landStrengthSoft: 0.4
-  _landStrengthHard: 0.75
+  _throwStrength: 0.2
+  _throwDuration: 0.4
+  _landStrengthSoft: 0.2
+  _landStrengthHard: 0.6
   _landThreshold: 10
   _landDuration: 0.2
-  _jumpStrength: 0.2
-  _jumpDuration: 0.15
-  _highJumpStrength: 0.6
+  _highJumpStrength: 0.4
   _highJumpDuration: 0.5
-  _slowFallStrength: 0.2
+  _slowFallStrength: 0.1
   _dashStrength: 0.3
   _dashDuration: 0.15
   _travelStrength: 0.75

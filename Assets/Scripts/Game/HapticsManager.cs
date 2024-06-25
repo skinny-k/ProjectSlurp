@@ -62,6 +62,8 @@ public class HapticsManager : MonoBehaviour
     private void RemoveHapticEvent(HapticEventInfo ev)
     {
         _hapticStack.Remove(ev);
+        ev.Dispose();
+
         if (_hapticStack.Count != 0)
         {
             // We don't care about the duration -- whatever is handling the other event should end it at the necessary time,
@@ -93,7 +95,7 @@ public class HapticsManager : MonoBehaviour
         else yield return new WaitForSeconds(0);
     }
 
-    public class HapticEventInfo : IEquatable<HapticEventInfo>
+    public class HapticEventInfo : IEquatable<HapticEventInfo>, IDisposable
     {
         public float strength { get; private set; } = 0f;
         public float duration { get; private set; } = 0f;
@@ -108,5 +110,15 @@ public class HapticsManager : MonoBehaviour
         {
             return (this.strength == other.strength && this.duration == other.duration);
         }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+        }
+    }
+
+    void OnDestroy()
+    {
+       _gamepad.ResetHaptics();
     }
 }

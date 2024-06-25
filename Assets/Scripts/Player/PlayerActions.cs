@@ -37,7 +37,8 @@ public class PlayerActions : MonoBehaviour
         if (PlayerWeapon.IsHeld && !_movement.IsInPrivilegedMove)
         {
             Debug.Log("Attack");
-            HapticsManager.TimedRumble(_player.HapticsSettings.A_strength, _player.HapticsSettings.A_duration);
+            // Play haptics if a hit occurs
+            // HapticsManager.TimedRumble(_player.HapticsSettings.A_strength, _player.HapticsSettings.A_duration);
         }
         // NOTE: the player can recall their weapon while traveling, but not while dashing
         else if (!_movement.IsDashing)
@@ -134,6 +135,7 @@ public class PlayerActions : MonoBehaviour
     public void CollectWeapon()
     {
         HasWeapon = true;
+        _movement.EndTravel();
         HapticsManager.TimedRumble(_player.HapticsSettings.J_strength, _player.HapticsSettings.J_duration);
     }
 
