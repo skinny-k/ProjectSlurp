@@ -131,9 +131,9 @@ public class PlayerMovement : MonoBehaviour
             }
             
             // resets the player's jumps and aerial movement abilities if they touched the ground
-            Debug.Log(gameObject.name + ", " + collision.transform.gameObject.name);
             if (Mathf.Abs(collision.transform.position.y - transform.position.y) <= 0.05f)
             {
+                
                 _currentJumps = 0;
                 IsGrounded = true;
                 IsHighJumping = false;
