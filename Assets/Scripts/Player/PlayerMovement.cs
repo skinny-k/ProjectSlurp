@@ -45,6 +45,9 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector3 _targetRot;
     private Vector3 _moveDir = Vector3.zero;
+
+    private HapticsManager.HapticEventInfo _slowFallHaptics;
+    private HapticsManager.HapticEventInfo _travelHaptics;
     
     public bool IsGrounded { get; private set; } = true;
     public bool IsHighJumping { get; private set; } = false;
@@ -128,12 +131,16 @@ public class PlayerMovement : MonoBehaviour
             }
             
             // resets the player's jumps and aerial movement abilities if they touched the ground
-            if (collision.transform.position.y < transform.position.y)
+            Debug.Log(gameObject.name + ", " + collision.transform.gameObject.name);
+            if (Mathf.Abs(collision.transform.position.y - transform.position.y) <= 0.05f)
             {
                 _currentJumps = 0;
                 IsGrounded = true;
                 IsHighJumping = false;
                 SlowFall(false);
+
+                float hapticStrength = collision.relativeVelocity.magnitude < _player.HapticsSettings.D_threshold ? _player.HapticsSettings.D_strength_1 : _player.HapticsSettings.D_strength_2;
+                HapticsManager.TimedRumble(hapticStrength, _player.HapticsSettings.D_duration);
             }
         }
     }
@@ -231,6 +238,8 @@ public class PlayerMovement : MonoBehaviour
                     RemoveSpeedModifier(_airSpeedModifier);
                     AddSpeedModifier(_slowFallAirSpeedModifier);
                 }
+
+                _slowFallHaptics = HapticsManager.StartRumble(_player.HapticsSettings.G_strength);
             }
             else // if the player is ending a slow fall...
             {
@@ -242,6 +251,8 @@ public class PlayerMovement : MonoBehaviour
                 RemoveSpeedModifier(_slowFallAirSpeedModifier);
                 if (_airSpeedModifier != 1f && !IsGrounded && !_speedModifiers.Contains(_airSpeedModifier))
                     AddSpeedModifier(_airSpeedModifier);
+
+                HapticsManager.StopRumble(_slowFallHaptics);
             }
 
             string msg = "Start ";
@@ -269,6 +280,7 @@ public class PlayerMovement : MonoBehaviour
             IsHighJumping = true;
 
             Debug.Log("High Jump");
+            HapticsManager.TimedRumble(_player.HapticsSettings.F_strength, _player.HapticsSettings.F_duration);
         }
     }
 
@@ -287,6 +299,8 @@ public class PlayerMovement : MonoBehaviour
         {
             IsTraveling = true;
             Debug.Log("Start Travel");
+
+            _travelHaptics = HapticsManager.StartRumble(_player.HapticsSettings.I_strength);
         }
     }
 
@@ -295,6 +309,9 @@ public class PlayerMovement : MonoBehaviour
         _player.Rb.velocity = Vector3.zero;
         IsTraveling = false;
         Debug.Log("End Travel");
+
+        HapticsManager.StopRumble(_travelHaptics);
+        HapticsManager.TimedRumble(_player.HapticsSettings.I_impact, _player.HapticsSettings.I_duration);
     }
 
     // helper functions to apply and remove multiple speed modifiers more easily

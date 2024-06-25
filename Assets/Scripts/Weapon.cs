@@ -109,13 +109,14 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
                 player.GetComponent<PlayerActions>().CollectWeapon();
 
                 GetComponent<Collider>().enabled = false;
-                _rb.isKinematic = true;
-                _rb.velocity = Vector3.zero;
 
                 // parent the weapon back to the player
                 transform.parent = player.transform;
                 transform.localPosition = _holdPosition;
                 transform.localRotation = Quaternion.Euler(_baseRotation);
+                
+                _rb.velocity = Vector3.zero;
+                _rb.isKinematic = true;
 
                 IsHeld = true;
                 IsThrown = false;
@@ -158,6 +159,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
         // return to the player
         // NOTE: speed is non-constant to ensure that the weapon always returns in a predictable amount of time
         IsReturning = true;
+        _rb.isKinematic = false;
         _returnSpeed = Vector3.Distance(transform.position, player.transform.position) / _returnTime;
     }
 }

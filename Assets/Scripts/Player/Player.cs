@@ -9,12 +9,14 @@ using UnityEngine;
 public class Player : Entity
 {
     [SerializeField] PlayerCamera _camera;
+    [SerializeField] PlayerHapticsData _hapticsSettings;
     
     protected InputManager _input;
     protected PlayerMovement _movement;
     protected PlayerActions _actions;
 
     public PlayerCamera Camera => _camera;
+    public PlayerHapticsData HapticsSettings => _hapticsSettings;
     
     protected void OnEnable()
     {
