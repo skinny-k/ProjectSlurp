@@ -2,8 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(Player))]
-[RequireComponent(typeof(PlayerMovement))]
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerActions : MonoBehaviour
 {
@@ -39,6 +37,8 @@ public class PlayerActions : MonoBehaviour
         if (PlayerWeapon.IsHeld && !_movement.IsInPrivilegedMove)
         {
             Debug.Log("Attack");
+            // Play haptics if a hit occurs
+            // HapticsManager.TimedRumble(_player.HapticsSettings.A_strength, _player.HapticsSettings.A_duration);
         }
         // NOTE: the player can recall their weapon while traveling, but not while dashing
         else if (!_movement.IsDashing)
@@ -112,6 +112,7 @@ public class PlayerActions : MonoBehaviour
             PlayerWeapon.Throw(target - PlayerWeapon.transform.position);
             HasWeapon = false;
             Debug.Log("Throw");
+            HapticsManager.TimedRumble(_player.HapticsSettings.C_strength, _player.HapticsSettings.C_duration);
         }
         // NOTE: the player can recall their weapon while traveling, but not while dashing
         else if (!_movement.IsDashing)
@@ -134,6 +135,8 @@ public class PlayerActions : MonoBehaviour
     public void CollectWeapon()
     {
         HasWeapon = true;
+        _movement.EndTravel();
+        HapticsManager.TimedRumble(_player.HapticsSettings.J_strength, _player.HapticsSettings.J_duration);
     }
 
     private IEnumerator RetryAttack()

@@ -9,12 +9,14 @@ using UnityEngine;
 public class Player : Entity
 {
     [SerializeField] PlayerCamera _camera;
+    [SerializeField] PlayerHapticsData _hapticsSettings;
     
     protected InputManager _input;
     protected PlayerMovement _movement;
     protected PlayerActions _actions;
 
     public PlayerCamera Camera => _camera;
+    public PlayerHapticsData HapticsSettings => _hapticsSettings;
     
     protected void OnEnable()
     {
@@ -63,6 +65,7 @@ public class Player : Entity
         _input.OnAim += Aim;
         _input.OnThrow += Throw;
         _input.OnTravel += Travel;
+        _input.OnShoulderSwitch += ShoulderSwitch;
     }
 
     protected void UnsubscribeToInput()
@@ -78,6 +81,7 @@ public class Player : Entity
         _input.OnAim -= Aim;
         _input.OnThrow -= Throw;
         _input.OnTravel -= Travel;
+        _input.OnShoulderSwitch -= ShoulderSwitch;
     }
 
     // allows the player to be rotated by force
@@ -155,5 +159,10 @@ public class Player : Entity
     protected void Travel()
     {
         _movement.Travel();
+    }
+
+    protected void ShoulderSwitch()
+    {
+        _camera.ShoulderSwitch();
     }
 }

@@ -13,7 +13,11 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     [Header("Other")]
     [Tooltip("The time in seconds that it should take for the weapon to return to the owning player.")]
     [SerializeField] float _returnTime = 0.25f;
+    [Tooltip("The distance from the player's hand the weapon should consider to be returned.")]
+    [SerializeField] float _returnThreshold = 0.15f;
 
+    // TODO: enable/disable hurt box based on weapon context
+    private DamageVolume _hurtbox;
     private Rigidbody _rb;
     private Quaternion _throwRotation;
     private Vector3 _lastThrownFrom;
@@ -33,6 +37,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     {
         // initialize weapon settings
         _rb = GetComponent<Rigidbody>();
+        _hurtbox = transform.Find("Hurt Box").GetComponent<DamageVolume>();
         TravelNode = transform.Find("Travel Node");
 
         transform.localRotation = Quaternion.Euler(_baseRotation);
@@ -83,6 +88,11 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.LookRotation(lookDir), 0.75f);
             // accelerate towards the return target
             _rb.velocity = (returnPos - transform.position).normalized * _returnSpeed;
+
+            if (Vector3.Distance(returnPos, transform.position) <= _returnThreshold)
+            {
+                ReparentTo(Owner.GetComponent<Player>());
+            }
         }
     }
 
@@ -100,23 +110,10 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
                 transform.localScale = (new Vector3(1 / collision.transform.localScale.x, 1 / collision.transform.localScale.y, 1 / collision.transform.localScale.z));
                 IsThrown = false;
             }
-            else if (collision.gameObject.GetComponent<PlayerActions>() != null) // if the weapon touched the player...
+            else if (collision.gameObject.GetComponent<Player>() != null) // if the weapon touched the player...
             {
                 Player player = collision.gameObject.GetComponent<Player>();
-                player.GetComponent<PlayerActions>().CollectWeapon();
-
-                GetComponent<Collider>().enabled = false;
-                _rb.isKinematic = true;
-                _rb.velocity = Vector3.zero;
-
-                // parent the weapon back to the player
-                transform.parent = player.transform;
-                transform.localPosition = _holdPosition;
-                transform.localRotation = Quaternion.Euler(_baseRotation);
-
-                IsHeld = true;
-                IsThrown = false;
-                IsReturning = false;
+                ReparentTo(player);
             }
         }
     }
@@ -130,7 +127,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     public void Throw(Vector3 dir, float speed = 0)
     {
         // track where the weapon was thrown from
-        // this is usefull for the boomerang effect that the weapon has
+        // this is useful for the boomerang effect that the weapon has
         _lastThrownFrom = transform.position;
         
         // enable collision
@@ -155,6 +152,26 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
         // return to the player
         // NOTE: speed is non-constant to ensure that the weapon always returns in a predictable amount of time
         IsReturning = true;
+        _rb.isKinematic = false;
         _returnSpeed = Vector3.Distance(transform.position, player.transform.position) / _returnTime;
+    }
+
+    private void ReparentTo(Player player)
+    {
+        player.GetComponent<PlayerActions>().CollectWeapon();
+
+        GetComponent<Collider>().enabled = false;
+
+        // parent the weapon back to the player
+        transform.parent = player.transform;
+        transform.localPosition = _holdPosition;
+        transform.localRotation = Quaternion.Euler(_baseRotation);
+        
+        _rb.velocity = Vector3.zero;
+        _rb.isKinematic = true;
+
+        IsHeld = true;
+        IsThrown = false;
+        IsReturning = false;
     }
 }

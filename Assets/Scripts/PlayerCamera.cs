@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
+[RequireComponent(typeof(CinemachineBrain))]
 public class PlayerCamera : MonoBehaviour
 {
     [SerializeField] float _rotationalSpeed = 180f;
@@ -30,6 +31,7 @@ public class PlayerCamera : MonoBehaviour
     public bool IsMovingToDefault { get; private set; } = false;
 
     private Player _player;
+    private CinemachineBrain _cm;
 
     void OnValidate()
     {
@@ -58,6 +60,11 @@ public class PlayerCamera : MonoBehaviour
         {
             _followCameraSpringArm.transform.rotation = Quaternion.Euler(_defaultRoll, transform.position.y, 0);
         }
+    }
+
+    void Awake()
+    {
+        _cm = GetComponent<CinemachineBrain>();
     }
 
     void Update()
@@ -136,6 +143,12 @@ public class PlayerCamera : MonoBehaviour
         }
     }
 
+    public void ShoulderSwitch()
+    {
+        Vector3 newArm = _aimCameraSpringArm.ArmOffsetProportions;
+        newArm.x *= -1;
+    }
+
     // forces the input to be read as purely vertical or purely horizontal if it is close enough
     // this is helpful for camera input, as it allows the player to pan straight up, straight down or straight to
     // the side much more easily
@@ -151,5 +164,20 @@ public class PlayerCamera : MonoBehaviour
             input = new Vector2(0, input.y);
         }
         return input;
+    }
+
+    public Vector3 GetForward()
+    {
+        CinemachineBlend _blend = _cm.ActiveBlend;
+        if (_blend == null)
+        {
+            return transform.forward;
+        }
+        else
+        {
+            Vector3 dirA = _blend.CamA.VirtualCameraGameObject.transform.forward;
+            Vector3 dirB = _blend.CamB.VirtualCameraGameObject.transform.forward;
+            return Vector3.Lerp(dirA, dirB, _blend.TimeInBlend / _blend.Duration).normalized;
+        }
     }
 }

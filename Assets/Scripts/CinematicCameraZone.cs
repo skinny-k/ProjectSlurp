@@ -3,17 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// A zone that will take control of the player camera to give a cinematic view
 [RequireComponent(typeof(Collider))]
 public class CinematicCameraZone : MonoBehaviour
 {
     [SerializeField] CinemachineVirtualCamera _cam;
 
-    Collider collider;
+    Collider _collider;
 
     void OnValidate()
     {
-        collider = GetComponent<Collider>();
-        collider.isTrigger = true;
+        _collider = GetComponent<Collider>();
+        _collider.isTrigger = true;
         if (_cam != null)
         {
             _cam.Priority = 0;
@@ -22,8 +23,8 @@ public class CinematicCameraZone : MonoBehaviour
 
     void OnStart()
     {
-        collider = GetComponent<Collider>();
-        collider.isTrigger = true;
+        _collider = GetComponent<Collider>();
+        _collider.isTrigger = true;
         if (_cam != null)
         {
             _cam.Priority = 0;

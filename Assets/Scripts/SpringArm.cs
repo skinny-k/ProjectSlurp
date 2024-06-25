@@ -7,8 +7,10 @@ using UnityEngine;
 public class SpringArm : MonoBehaviour
 {
     [SerializeField] CinemachineVirtualCamera _camera;
-    [SerializeField] Vector3 _minimumArmLength = new Vector3(0, 0, 0.5f);
-    [SerializeField] Vector3 _targetArmLength = new Vector3(0, 0, -10);
+    [Tooltip("Minimum spring arm length as a fraction of target arm offset magnitude.")]
+    [SerializeField] float _minimumArmLength = 1f;
+    [SerializeField] float _targetArmLength = 10f;
+    [SerializeField] Vector3 _armOffsetProportions = new Vector3(0, 0, 1f);
 
     [Header("Collision Settings")]
     [SerializeField] float _collisionOffset = 0.1f;
@@ -25,6 +27,11 @@ public class SpringArm : MonoBehaviour
 
     private float _roll = 0f;
     private float _yaw = 0f;
+    private float _currentArmLength = 10f;
+
+    public float CurrentArmLength => _currentArmLength;
+    public float TargetArmLength => _targetArmLength;
+    public Vector3 ArmOffsetProportions => _armOffsetProportions;
     
     void OnValidate()
     {
@@ -61,7 +68,7 @@ public class SpringArm : MonoBehaviour
         }
         if (_camera != null)
         {
-            _camera.transform.localPosition = _targetArmLength;
+            _camera.transform.localPosition = _armOffsetProportions.normalized * _targetArmLength;
         }
 
         // sets the initial rotation of the spring arm
@@ -73,14 +80,19 @@ public class SpringArm : MonoBehaviour
     private Vector3 UpdateArmLength()
     {
         RaycastHit hit;
-        if (Physics.Raycast(FollowObject.transform.position, transform.TransformDirection(_targetArmLength), out hit, _targetArmLength.magnitude))
+        if (Physics.Raycast(FollowObject.transform.position, _camera.transform.position - FollowObject.transform.position, out hit, _targetArmLength, layers))
         {
-            return _targetArmLength.normalized * (hit.distance - _collisionOffset);
+            return _armOffsetProportions.normalized * Mathf.Clamp(hit.distance - _collisionOffset, _targetArmLength * _minimumArmLength, _targetArmLength);
         }
         else
         {
-            return _targetArmLength;
+            return _armOffsetProportions.normalized * _targetArmLength;
         }
+    }
+
+    public void SetTargetArmLength(float length)
+    {
+        _targetArmLength = length;
     }
 
     public void ApplyRoll(float degrees)
