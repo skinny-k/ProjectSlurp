@@ -31,7 +31,8 @@ public class HapticsManager : MonoBehaviour
         HapticEventInfo ev = new HapticEventInfo(strength, duration);
         Instance.AddHapticEvent(ev);
 
-        Instance.StartCoroutine(Instance.EngageRumbleWithDuration(ev));
+        if (_gamepad != null)
+            Instance.StartCoroutine(Instance.EngageRumbleWithDuration(ev));
 
         return ev;
     }
@@ -41,7 +42,8 @@ public class HapticsManager : MonoBehaviour
         HapticEventInfo ev = new HapticEventInfo(strength, -1f);
         Instance.AddHapticEvent(ev);
 
-        Instance.EngageRumble(ev);
+        if (_gamepad != null)
+            Instance.EngageRumble(ev);
 
         return ev;
     }
@@ -68,11 +70,13 @@ public class HapticsManager : MonoBehaviour
         {
             // We don't care about the duration -- whatever is handling the other event should end it at the necessary time,
             // so DO NOT put a new event back in the stack!
-            EngageRumble(_hapticStack[_hapticStack.Count - 1]);
+            if (_gamepad != null)
+                EngageRumble(_hapticStack[_hapticStack.Count - 1]);
         }
         else
         {
-            _gamepad.ResetHaptics();
+            if (_gamepad != null)
+                _gamepad.ResetHaptics();
         }
     }
 
@@ -119,6 +123,7 @@ public class HapticsManager : MonoBehaviour
 
     void OnDestroy()
     {
-       _gamepad.ResetHaptics();
+       if (_gamepad != null)
+        _gamepad.ResetHaptics();
     }
 }
