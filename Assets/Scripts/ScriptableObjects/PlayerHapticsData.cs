@@ -39,7 +39,7 @@ public class PlayerHapticsData : ScriptableObject
     [SerializeField] float _travelImpactStrength = 1f;
     [SerializeField] float _travelImpactDuration = 0.25f;
 
-    [Header("Dash Haptics")]
+    [Header("Collect Weapon Haptics")]
     [SerializeField] float _collectStrength = 0.15f;
     [SerializeField] float _collectDuration = 0.1f;
 

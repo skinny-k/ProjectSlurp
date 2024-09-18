@@ -11,7 +11,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _moveSpeed = 5f;
     [SerializeField] float _turnSpeed = 360f;
     [SerializeField] float _slopeTolerance = 45f;
-    [SerializeField] float _deceleration = 700f;
+    [SerializeField] float _acceleration = 5f;
 
     [Header("Aim Movement Settings")]
     [SerializeField] public float AimSpeedModifier = 0.5f;
@@ -45,11 +45,11 @@ public class PlayerMovement : MonoBehaviour
     private int _currentJumps = 0;
 
     private Vector3 _targetRot;
+    private Vector2 _moveInput;
     private Vector3 _moveDir = Vector3.zero;
-    private SlopeInfo _slope;
-    private Vector3 _slopeVelocity;
-    private RaycastHit _slopeHit;
     private RaycastHit _moveHit;
+    private GroundInfo _ground;
+    private RaycastHit _groundHit;
 
     private HapticsManager.HapticEventInfo _slowFallHaptics;
     private HapticsManager.HapticEventInfo _travelHaptics;
@@ -62,7 +62,7 @@ public class PlayerMovement : MonoBehaviour
 
     public bool IsInPrivilegedMove => IsDashing || IsTraveling;
     public bool IsInActiveAerial => IsHighJumping || IsSlowFalling;
-
+    
     void Start()
     {
         _input = GetComponent<InputManager>();
@@ -83,6 +83,7 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        // high jump handling
         if (IsHighJumping && _player.Rb.velocity.y > 0)
         {
             // decreases the player's speed when they start a high jump
@@ -99,28 +100,74 @@ public class PlayerMovement : MonoBehaviour
             // a high jump ends once a player reaches the apex of their high jump
             IsHighJumping = false;
         }
-        
+
+        // input and slope handling
+        GetCurrentGround();
+        // get movement input
+        _moveInput = _player.GetMove();
+        // if the player is providing movement input
+        if (_moveInput.magnitude >= 0.05f)
+        {
+            // if the player is not dashing or traveling, which would prevent other types of movement...
+            if (!IsInPrivilegedMove)
+            {
+                // calculate movement input in relation to camera
+                Vector2 input = _player.GetMove();
+                if (!_player.Camera.IsMovingToDefault)
+                {
+                    Vector3 inputDir = new Vector3(input.x, 0, input.y);
+                    if (Mathf.Approximately(Mathf.Abs(_player.Camera.GetForward().y), 1.0f))
+                    {
+                        inputDir = new Vector3(input.x, input.y, 0);
+                    }
+
+                    _moveDir = _player.Camera.transform.TransformDirection(inputDir);
+                }
+                _moveDir.y = 0f; _moveDir.Normalize();
+
+                // rotate player towards the movement direction if they are not aiming
+                if (!_actions.IsAiming)
+                {
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(_moveDir, Vector3.up), _turnSpeed * Time.deltaTime);
+                }
+
+                // finalize movement
+                if (!_ground.Steeper(_slopeTolerance))
+                {
+                    if (IsGrounded)
+                    {
+                        _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, Vector3.ProjectOnPlane(_moveDir, _ground.normal) * _moveSpeed * _netSpeedModifier, _acceleration);
+                    }
+                    else
+                    {
+                        _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, (new Vector3(_moveDir.x, 0, _moveDir.z) * _moveSpeed * _netSpeedModifier) + (Vector3.up * _player.Rb.velocity.y), _acceleration);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (IsGrounded)
+            {
+                _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, Vector3.zero, _acceleration);
+            }
+            else
+            {
+                _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, Vector3.up * _player.Rb.velocity.y, _acceleration);
+            }
+        }
+
+        // dash, travel & deceleration handling
         if (IsDashing)
         {
             // accelerates into a dash as necessary
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, transform.forward * _dashSpeed, _dashAcceleration * Time.deltaTime);
+            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, transform.forward * _dashSpeed, _dashAcceleration);
         }
         else if (IsTraveling)
         {
             // accelerates into a travel as necessary
             Vector3 dir = (_actions.PlayerWeapon.TravelNode.position - transform.position).normalized;
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
-        }
-        else
-        {
-            // decelerate the player
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, Vector3.up * _player.Rb.velocity.y, _deceleration * Time.deltaTime);
-        }
-
-        _slope = GetCurrentSlope();
-        if (_slope.Steeper(_slopeTolerance))
-        {
-            _player.Rb.AddForce(Vector3.ProjectOnPlane(Vector3.down * 4.9f, _slope.normal), ForceMode.VelocityChange);
+            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, dir * _travelSpeed, _travelAcceleration);
         }
     }
 
@@ -136,12 +183,14 @@ public class PlayerMovement : MonoBehaviour
             }
             
             // resets the player's jumps and aerial movement abilities if they touched the ground
-            if (!_slope.Steeper(_slopeTolerance))
+            if (!IsGrounded && GetCurrentGround())
             {
                 _currentJumps = 0;
                 IsGrounded = true;
                 IsHighJumping = false;
                 SlowFall(false);
+
+                _player.Rb.velocity = new Vector3(_player.Rb.velocity.x, 0, _player.Rb.velocity.z);
 
                 float hapticStrength = collision.relativeVelocity.magnitude < _player.HapticsSettings.D_threshold ? _player.HapticsSettings.D_strength_1 : _player.HapticsSettings.D_strength_2;
                 HapticsManager.TimedRumble(hapticStrength, _player.HapticsSettings.D_duration);
@@ -161,44 +210,6 @@ public class PlayerMovement : MonoBehaviour
         // sets the rotation the player should be facing in
         // this helps rotational movement look a little more smooth
         _targetRot = rotation;
-    }
-    
-    public void Move(Vector2 input)
-    {
-        // if the player is not dashing or traveling, which prevent other types of movement...
-        if (!IsInPrivilegedMove)
-        {
-            // calculates and applies the movement input in relation to the camera
-            input = input.normalized;
-            if (!_player.Camera.IsMovingToDefault)
-            {
-                Vector3 inputDir = new Vector3(input.x, 0, input.y);
-                if (Mathf.Approximately(Mathf.Abs(_player.Camera.GetForward().y), 1.0f))
-                {
-                    inputDir = new Vector3(input.x, input.y, 0);
-                }
-
-                _moveDir = _player.Camera.transform.TransformDirection(inputDir);
-            }
-            _moveDir.y = 0f; _moveDir.Normalize();
-
-            Debug.DrawRay(transform.position + Vector3.up * 2.7f + _moveDir * 1.8f, Vector3.down * 5.2f, Color.green);
-            if (Physics.Raycast(transform.position + Vector3.up * 2.7f + _moveDir * 1.8f, Vector3.down, out _moveHit, 5.2f, ~LayerMask.NameToLayer("Environment")))
-            {
-                if (Utils.Between(Mathf.Rad2Deg * Mathf.Asin((_moveHit.point.y - transform.position.y) / Vector3.Distance(_moveHit.point, transform.position)), 0.05f, _slopeTolerance))
-                {
-                    // figure out what needs to happen to make slopes (and steps?) work
-                }
-            }
-
-            _player.Rb.AddForce(_moveDir * _moveSpeed * _netSpeedModifier, ForceMode.Acceleration);
-
-            // rotate the player towards the movement direction if they are not aiming
-            if (!_actions.IsAiming)
-            {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(_moveDir, Vector3.up), _turnSpeed * Time.deltaTime);
-            }
-        }
     }
 
     public void Jump()
@@ -311,6 +322,7 @@ public class PlayerMovement : MonoBehaviour
         if (!IsTraveling && _actions.PlayerWeapon.CanTravel())
         {
             IsTraveling = true;
+            IsGrounded = false;
             Debug.Log("Start Travel");
 
             _travelHaptics = HapticsManager.StartRumble(_player.HapticsSettings.I_strength);
@@ -323,6 +335,7 @@ public class PlayerMovement : MonoBehaviour
         {
             _player.Rb.velocity = Vector3.zero;
             IsTraveling = false;
+            IsGrounded = false;
             Debug.Log("End Travel");
 
             HapticsManager.StopRumble(_travelHaptics);
@@ -330,10 +343,15 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private SlopeInfo GetCurrentSlope()
+    private bool GetCurrentGround()
     {
-        Physics.SphereCast(transform.position + Vector3.up * 2.7f, 0.9f, Vector3.down, out _slopeHit, 2.7f, LayerMask.NameToLayer("Environment"));
-        return new SlopeInfo(_slopeHit);
+        bool r = Physics.SphereCast(transform.position + Vector3.up * 2.7f, 0.9f, Vector3.down, out _groundHit, 2.7f, ~LayerMask.NameToLayer("Environment"));
+        _ground.UpdateFromRaycastHit(_groundHit);
+        if (IsGrounded && !r)
+        {
+            IsGrounded = false;
+        }
+        return r && _ground.angle <= _slopeTolerance;
     }
 
     // helper functions to apply and remove multiple speed modifiers more easily
@@ -381,7 +399,7 @@ public class PlayerMovement : MonoBehaviour
         IsDashing = false;
     }
 
-    internal struct SlopeInfo
+    internal struct GroundInfo
     {
         public bool hit;
         public Collider collider;
@@ -389,7 +407,7 @@ public class PlayerMovement : MonoBehaviour
         public Vector3 normal;
         public float angle;
 
-        public SlopeInfo(RaycastHit hit)
+        public void UpdateFromRaycastHit(RaycastHit hit)
         {
             this.hit = hit.transform != null;
             this.collider = hit.collider;

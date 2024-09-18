@@ -13,8 +13,8 @@ public class InputManager : MonoBehaviour
 
     private bool _isSlowFallHeld = false;
 
-    public event Action<Vector2> OnMove;
-    public event Action<Vector2> OnCameraMove;
+    // public event Action<Vector2> OnMove;
+    // public event Action<Vector2> OnCameraMove;
     public event Action OnJump;
     public event Action<bool> OnSlowFall;
     public event Action OnHighJump;
@@ -36,14 +36,14 @@ public class InputManager : MonoBehaviour
         // polls each input action for state changes and fires a corresponding event if a state change has occurred
         
         // Movement and Camera
-        if (_input.actions["Camera"].ReadValue<Vector2>() != Vector2.zero)
-        {
-            OnCameraMove?.Invoke(_input.actions["Camera"].ReadValue<Vector2>());
-        }
-        if (_input.actions["Move"].ReadValue<Vector2>() != Vector2.zero)
-        {
-            OnMove?.Invoke(_input.actions["Move"].ReadValue<Vector2>());
-        }
+        // if (_input.actions["Camera"].ReadValue<Vector2>() != Vector2.zero)
+        // {
+        //     OnCameraMove?.Invoke(_input.actions["Camera"].ReadValue<Vector2>());
+        // }
+        // if (_input.actions["Move"].ReadValue<Vector2>() != Vector2.zero)
+        // {
+        //     OnMove?.Invoke(_input.actions["Move"].ReadValue<Vector2>());
+        // }
 
         // Jump & Aerial Maneuvers
         if (_input.actions["Jump"].triggered)

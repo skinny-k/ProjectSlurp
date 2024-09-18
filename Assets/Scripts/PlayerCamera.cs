@@ -31,6 +31,7 @@ public class PlayerCamera : MonoBehaviour
     public bool IsMovingToDefault { get; private set; } = false;
 
     private Player _player;
+    private Vector2 _cameraInput;
     private CinemachineBrain _cm;
 
     void OnValidate()
@@ -69,6 +70,27 @@ public class PlayerCamera : MonoBehaviour
 
     void Update()
     {
+        // fix input as necessary
+        _cameraInput = FixInput(_player.GetCamera());
+        if (_cameraInput.magnitude >= 0.05f)
+        {
+            IsMovingToDefault = false;
+
+            if (IsAiming)
+            {
+                // apply the input movement to the aim camera and rotate the player to match
+                _aimCameraSpringArm.ApplyYaw(_cameraInput.x * _aimSensitivity * Time.deltaTime);
+                _aimCameraSpringArm.ApplyRoll(-_cameraInput.y * _aimSensitivity * Time.deltaTime);
+                _player.Rotate(_cameraInput, _aimSensitivity);
+            }
+            else
+            {
+                // apply the input movement to the follow camera
+                _followCameraSpringArm.ApplyYaw(_cameraInput.x * _rotationalSpeed * Time.deltaTime);
+                _followCameraSpringArm.ApplyRoll(_cameraInput.y * _rotationalSpeed * Time.deltaTime);
+            }
+        }
+        
         // move the follow camera toward its default rotation as necessary
         if (IsMovingToDefault)
         {
@@ -94,26 +116,6 @@ public class PlayerCamera : MonoBehaviour
     public void SetPlayer(Player player)
     {
         _player = player;
-    }
-
-    public void Move(Vector2 input)
-    {
-        IsMovingToDefault = false;
-        // fix input as necessary
-        input = FixInput(input);
-        if (IsAiming)
-        {
-            // apply the input movement to the aim camera and rotate the player to match
-            _aimCameraSpringArm.ApplyYaw(input.x * _aimSensitivity * Time.deltaTime);
-            _aimCameraSpringArm.ApplyRoll(-input.y * _aimSensitivity * Time.deltaTime);
-            _player.Rotate(input, _aimSensitivity);
-        }
-        else
-        {
-            // apply the input movement to the follow camera
-            _followCameraSpringArm.ApplyYaw(input.x * _rotationalSpeed * Time.deltaTime);
-            _followCameraSpringArm.ApplyRoll(input.y * _rotationalSpeed * Time.deltaTime);
-        }
     }
 
     public void MoveToDefault()

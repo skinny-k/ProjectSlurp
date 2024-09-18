@@ -455,7 +455,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 112
   m_CollisionDetection: 2
 --- !u!114 &2130351207501661903
@@ -526,9 +526,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a3bea6f6466b4960a991b7a840cf1f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _moveSpeed: 25
-  _turnSpeed: 2160
+  _moveSpeed: 10
+  _turnSpeed: 1800
   _slopeTolerance: 45
+  _acceleration: 1
   AimSpeedModifier: 0.25
   _airSpeedModifier: 1
   _slowFallVelocityY: 2

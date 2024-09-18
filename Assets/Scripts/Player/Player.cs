@@ -42,8 +42,8 @@ public class Player : Entity
 
     protected void SubscribeToInput()
     {
-        _input.OnMove += Move;
-        _input.OnCameraMove += MoveCamera;
+        // _input.OnMove += Move;
+        // _input.OnCameraMove += MoveCamera;
         _input.OnJump += Jump;
         _input.OnSlowFall += SlowFall;
         _input.OnHighJump += HighJump;
@@ -58,8 +58,8 @@ public class Player : Entity
 
     protected void UnsubscribeToInput()
     {
-        _input.OnMove -= Move;
-        _input.OnCameraMove -= MoveCamera;
+        // _input.OnMove -= Move;
+        // _input.OnCameraMove -= MoveCamera;
         _input.OnJump -= Jump;
         _input.OnSlowFall -= SlowFall;
         _input.OnHighJump -= HighJump;
@@ -80,16 +80,16 @@ public class Player : Entity
     }
 
     // helper functions that coordinate responses to input from the player component classes
-    protected void Move(Vector2 value)
-    {
-        _movement.Move(value);
-    }
+    // protected void Move(Vector2 value)
+    // {
+    //     _movement.Move(value);
+    // }
 
-    protected void MoveCamera(Vector2 value)
-    {
-        _camera.Move(value);
-        // _lastCameraMove = 0;
-    }
+    // protected void MoveCamera(Vector2 value)
+    // {
+    //     _camera.Move(value);
+    //     // _lastCameraMove = 0;
+    // }
 
     protected void Jump()
     {
@@ -140,5 +140,15 @@ public class Player : Entity
     protected void ShoulderSwitch()
     {
         _camera.ShoulderSwitch();
+    }
+
+    public Vector2 GetMove()
+    {
+        return _input.GetInputValueAsVector2("Move");
+    }
+
+    public Vector2 GetCamera()
+    {
+        return _input.GetInputValueAsVector2("Camera");
     }
 }
