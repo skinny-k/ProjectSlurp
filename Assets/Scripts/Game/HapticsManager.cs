@@ -9,7 +9,7 @@ public class HapticsManager : MonoBehaviour
     public static HapticsManager Instance;
     static Gamepad _gamepad => Gamepad.current;
 
-    float _currentRumbleStrength = 0f;
+    private float _currentRumbleStrength = 0f;
 
     // called a stack because it is generally used as such, but we may need to remove a specific event if it times out, so we need greater access provided by ArrayList
     List<HapticEventInfo> _hapticStack = new List<HapticEventInfo>();
@@ -54,6 +54,11 @@ public class HapticsManager : MonoBehaviour
         {
             Instance.RemoveHapticEvent(rumble);
         }
+    }
+
+    private float GetGlobalHapticsStrength()
+    {
+        return PlayerPrefs.GetInt("HapticsEnabled", 0) == 1 ? PlayerPrefs.GetFloat("HapticsStrength", 1.0f) : 0f;
     }
 
     private void AddHapticEvent(HapticEventInfo ev)

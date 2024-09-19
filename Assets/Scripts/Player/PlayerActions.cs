@@ -5,12 +5,14 @@ using UnityEngine;
 public class PlayerActions : MonoBehaviour
 {
     [Header("Weapon Settings")]
-    [SerializeField] public Weapon PlayerWeapon;
+    [SerializeField] public PlayerWeapon Weapon;
     // [SerializeField] float _throwSpeed = 50f;
     // [SerializeField] float _maxThrowDistance = 20f;
 
     private Player _player;
     private PlayerMovement _movement;
+
+    private string _aimSModKey;
     
     public bool IsBlocking { get; private set; } = false;
     public bool IsAiming { get; private set; } = false;
@@ -18,9 +20,9 @@ public class PlayerActions : MonoBehaviour
 
     void OnValidate()
     {
-        if (PlayerWeapon != null)
+        if (Weapon != null)
         {
-            PlayerWeapon.Owner = this;
+            Weapon.Owner = this;
         }
     }
 
@@ -28,12 +30,14 @@ public class PlayerActions : MonoBehaviour
     {
         _player = GetComponent<Player>();
         _movement = GetComponent<PlayerMovement>();
+
+        _aimSModKey = GetInstanceID() + "_aim";
     }
     
     public void Attack()
     {
         // if the player has their weapon and can attack...
-        if (PlayerWeapon.IsHeld && !_movement.IsInPrivilegedMove)
+        if (Weapon.IsHeld && !_movement.IsInPrivilegedMove)
         {
             Debug.Log("Attack");
             // Play haptics if a hit occurs
@@ -76,17 +80,17 @@ public class PlayerActions : MonoBehaviour
 
             // activate weapon aim as necessary
             if (!IsAiming || HasWeapon)
-                PlayerWeapon.Aim(IsAiming);
+                Weapon.Aim(IsAiming);
 
             string msg = "Start ";
             // reduce speed while aiming
             if (IsAiming)
             {
-                _movement.AddSpeedModifier(_movement.AimSpeedModifier);
+                _movement.AddSpeedModifier(_aimSModKey, _movement.AimSpeedModifier);
             }
             else
             {
-                _movement.RemoveSpeedModifier(_movement.AimSpeedModifier);
+                _movement.RemoveSpeedModifier(_aimSModKey);
                 msg = "End ";
             }
             Debug.Log(msg + "Aim");
@@ -96,19 +100,19 @@ public class PlayerActions : MonoBehaviour
     public void Throw()
     {
         // if the player has their weapon and is not dashing or traveling...
-        if (PlayerWeapon.IsHeld && !_movement.IsInPrivilegedMove)
+        if (Weapon.IsHeld && !_movement.IsInPrivilegedMove)
         {
             // find the weapon's hit point if it is in range
             // if not, find the maximum distance of the weapon instead
-            Vector3 target = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, PlayerWeapon.MaxThrowDistance));
+            Vector3 target = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, Weapon.MaxThrowDistance));
             RaycastHit hit;
-            if (Physics.Raycast(Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)), out hit, PlayerWeapon.MaxThrowDistance))
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)), out hit, Weapon.MaxThrowDistance))
             {
                 target = hit.point;
             }
 
             // throw the weapon towards the found target
-            PlayerWeapon.Throw(target - PlayerWeapon.transform.position);
+            Weapon.Throw(target - Weapon.transform.position);
             HasWeapon = false;
             Debug.Log("Throw");
             HapticsManager.TimedRumble(_player.HapticsSettings.C_strength, _player.HapticsSettings.C_duration);
@@ -116,7 +120,7 @@ public class PlayerActions : MonoBehaviour
         // NOTE: the player can recall their weapon while traveling, but not while dashing
         else if (!_movement.IsDashing)
         {
-            PlayerWeapon.ReturnTo(this);
+            Weapon.ReturnTo(this);
             StartCoroutine(RetryThrow());
         }
     }
@@ -124,7 +128,7 @@ public class PlayerActions : MonoBehaviour
     public void ForceWeaponReturn()
     {
         // force the player's weapon to begin traveling back to this player
-        PlayerWeapon.ReturnTo(this);
+        Weapon.ReturnTo(this);
         if (_movement.IsTraveling)
         {
             _movement.EndTravel();
@@ -140,7 +144,7 @@ public class PlayerActions : MonoBehaviour
 
     private IEnumerator RetryAttack()
     {
-        yield return new WaitForSeconds(PlayerWeapon.ReturnTime);
+        yield return new WaitForSeconds(Weapon.ReturnTime);
         
         if (!IsAiming)
         {
@@ -150,7 +154,7 @@ public class PlayerActions : MonoBehaviour
 
     private IEnumerator RetryThrow()
     {
-        yield return new WaitForSeconds(PlayerWeapon.ReturnTime);
+        yield return new WaitForSeconds(Weapon.ReturnTime);
 
         if (IsAiming)
         {

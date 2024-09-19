@@ -18,9 +18,8 @@ MonoBehaviour:
   _blockDuration: 0.15
   _throwStrength: 0.2
   _throwDuration: 0.4
-  _landStrengthSoft: 0.2
-  _landStrengthHard: 0.6
-  _landThreshold: 10
+  _landStrength: 1
+  _landThresholds: {x: 11.75, y: 14}
   _landDuration: 0.2
   _highJumpStrength: 0.4
   _highJumpDuration: 0.5

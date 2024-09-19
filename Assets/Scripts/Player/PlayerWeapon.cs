@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 
 [RequireComponent(typeof(Rigidbody))]
-public class Weapon : MonoBehaviour, IThrowable, IReturnable
+public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
 {
     [Header("Visual Settings")]
     [SerializeField] Vector3 _baseRotation = new Vector3(-70, 0, 0);
@@ -106,6 +106,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             // if the weapon was on its way out when it collided...
             if (IsThrown && !IsReturning)
             {
+                // TODO: Still having weird stuff with this for rotated objects
                 // stop and parent the weapon to the hit object
                 _rb.velocity = Vector3.zero;
 
@@ -195,7 +196,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
         ConstraintSource source = new ConstraintSource();
         source.sourceTransform = Owner.transform; source.weight = 1;
         _constraint.AddSource(source);
-        _constraint.SetTranslationOffset(0, _constraint.translationAtRest);
+        _constraint.SetTranslationOffset(0, _holdPosition);
         _constraint.SetRotationOffset(0, _constraint.rotationAtRest);
         
         _rb.velocity = Vector3.zero;

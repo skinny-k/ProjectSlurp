@@ -526,10 +526,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a3bea6f6466b4960a991b7a840cf1f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _moveSpeed: 10
+  _moveSpeed: 50
   _turnSpeed: 1800
   _slopeTolerance: 45
-  _acceleration: 1
+  _gravity: {x: 0, y: -9.81, z: 0}
   AimSpeedModifier: 0.25
   _airSpeedModifier: 1
   _slowFallVelocityY: 2
@@ -554,7 +554,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc062c7db347c416faae57a55b2bf5e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerWeapon: {fileID: 0}
+  Weapon: {fileID: 0}
 --- !u!1 &2130351208079417027
 GameObject:
   m_ObjectHideFlags: 0

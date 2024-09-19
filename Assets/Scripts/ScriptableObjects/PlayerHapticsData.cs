@@ -18,9 +18,10 @@ public class PlayerHapticsData : ScriptableObject
     [SerializeField] float _throwDuration = 0.25f;
 
     [Header("Land Haptics")]
-    [SerializeField] float _landStrengthSoft = 0.4f;
-    [SerializeField] float _landStrengthHard = 0.75f;
-    [SerializeField] float _landThreshold = 10f;
+    [Tooltip("Maximum allowed strength of the land haptic event.")]
+    [SerializeField] float _landStrength = 0.6f;
+    [Tooltip("Minimum and maximum velocity to scale the haptic strength to. If velocity is <= the minimum value, the effective strength will be 0. If velocity is >= the maximum value, the effective strength will be Land Strength.")]
+    [SerializeField] Vector2 _landThresholds = Vector2.zero;
     [SerializeField] float _landDuration = 0.2f;
 
     [Header("High Jump Haptics")]
@@ -52,9 +53,8 @@ public class PlayerHapticsData : ScriptableObject
     public float C_strength => _throwStrength;
     public float C_duration => _throwDuration;
 
-    public float D_strength_1 => _landStrengthSoft;
-    public float D_strength_2 => _landStrengthHard;
-    public float D_threshold => _landThreshold;
+    public float D_strength => _landStrength;
+    public Vector2 D_threshold => _landThresholds;
     public float D_duration => _landDuration;
     
     public float F_strength => _highJumpStrength;
