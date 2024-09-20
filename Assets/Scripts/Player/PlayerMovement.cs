@@ -13,8 +13,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _turnSpeed = 360f;
     [Tooltip("The steepest slope the player can walk up.")]
     [SerializeField] float _slopeTolerance = 45f;
-    [Tooltip("The maximum change in elevation the player can automatically traverse without jumping or falling")]
-    [SerializeField] float _stepHeight = 0.5f;
+    [SerializeField] float _groundCheckRadius = 0.85f;
+    [SerializeField] float _groundCheckPadding = 0.05f;
 
     [Header("Gravity")]
     [Tooltip("The force of the custom gravity. It is recommended you use the same value listed in the Physics section of Project Settings.")]
@@ -54,21 +54,25 @@ public class PlayerMovement : MonoBehaviour
     private PlayerActions _actions;
 
     private Rigidbody _rb;
+    private CapsuleCollider _col;
 
     private Dictionary<string, float> _speedModifiers = new Dictionary<string, float>();
     private float _netSpeedModifier = 1f;
-    
-    private int _currentJumps = 0;
-    private float _currentAirTime = 0f;
     private string _airSModKey;
     private string _highJumpSModKey;
     private string _slowFallSModKey;
+    
+    private int _currentJumps = 0;
+    private float _currentAirTime = 0f;
 
     private Vector3 _targetRot;
     private Vector2 _moveInput;
     private Vector3 _moveDir = Vector3.zero;
+
     private GroundInfo _ground;
     private RaycastHit _groundHit;
+    private float _groundCheckDistance;
+    private float _halfHeight;
 
     private HapticsManager.HapticEventInfo _slowFallHaptics;
     private HapticsManager.HapticEventInfo _travelHaptics;
@@ -89,7 +93,12 @@ public class PlayerMovement : MonoBehaviour
         _actions = GetComponent<PlayerActions>();
 
         _rb = _player.Rb;
+        _col = GetComponent<CapsuleCollider>();
+
         _moveDir = transform.forward;
+
+        _halfHeight = (_col.height / 2) * transform.localScale.y;
+        _groundCheckDistance = _halfHeight - _groundCheckRadius + _groundCheckPadding;
 
         _airSModKey = GetInstanceID() + "_air";
         _highJumpSModKey = GetInstanceID() + "_hij";
@@ -191,7 +200,7 @@ public class PlayerMovement : MonoBehaviour
 
     private bool CheckGrounded()
     {
-        bool r = Physics.SphereCast(transform.position, 0.85f, Vector3.down, out _groundHit, 1f, ~LayerMask.NameToLayer("Environment"));
+        bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"));
         _ground.UpdateFromRaycastHit(_groundHit);
 
         // if player hit the ground this physics step
@@ -400,6 +409,7 @@ public class PlayerMovement : MonoBehaviour
         // modifier with key already exists
         catch (ArgumentException ex)
         {
+            Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
             return false;
         }
         RecalculateNetSpeedModifier();
