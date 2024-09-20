@@ -12,7 +12,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _moveSpeed = 5f;
     [SerializeField] float _turnSpeed = 360f;
     [Tooltip("The steepest slope the player can walk up.")]
-    [SerializeField] float _slopeTolerance = 45f;
+    [SerializeField][Range(0f, 90f)] float _slopeTolerance = 45f;
     [SerializeField] float _groundCheckRadius = 0.85f;
     [SerializeField] float _groundCheckPadding = 0.05f;
 
@@ -21,14 +21,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Vector3 _gravity = new Vector3(0, -9.81f, 0);
 
     [Header("Aim Movement Settings")]
-    [SerializeField] public float AimSpeedModifier = 0.5f;
+    [SerializeField][Range(0f, 1f)] public float AimSpeedModifier = 0.5f;
 
     [Header("Air Settings")]
     [Tooltip("The speed reduction applied to the player while in the air.")]
-    [SerializeField] float _airSpeedModifier = 1f;
+    [SerializeField][Range(0f, 1f)] float _airSpeedModifier = 1f;
     [SerializeField] float _slowFallVelocityY = 1f;
     [Tooltip("The speed reduction applied to the player while slow falling. Compounds with Air Speed Modifier.")]
-    [SerializeField] float _slowFallAirSpeedModifier = 0.5f;
+    [SerializeField][Range(0f, 1f)] float _slowFallAirSpeedModifier = 0.5f;
 
     [Header("Jump Settings")]
     [Tooltip("The number of jumps the player can make.")]
@@ -41,13 +41,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _coyoteTime = 0.15f;
 
     [Header("Dash Settings")]
+    [SerializeField] float _dashVelocity = 15f;
+    [SerializeField] AnimationCurve _dashCurve;
     [SerializeField] float _dashDuration = 0.5f;
-    [SerializeField] float _dashSpeed = 15f;
-    [SerializeField] float _dashAcceleration = 20f;
 
     [Header("Travel Settings")]
     [SerializeField] float _travelSpeed = 25f;
     [SerializeField] float _travelAcceleration = 35f;
+    [SerializeField][Range(0f, 1f)] float _travelSpeedConservation = 0.5f;
 
     private InputManager _input;
     private Player _player;
@@ -68,6 +69,10 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 _targetRot;
     private Vector2 _moveInput;
     private Vector3 _moveDir = Vector3.zero;
+
+    private bool _canDash = true;
+    private Vector3 _dashDir;
+    private float _dashTimer = 0f;
 
     private GroundInfo _ground;
     private RaycastHit _groundHit;
@@ -117,25 +122,21 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         CheckGrounded();
-        ApplyMovement();
-        ApplyGravity();
-        
-        if (IsHighJumping)
-            UpdateHighJump();
-        // UpdatePrivilegedMovement();
 
-        // // dash & travel handling
-        // if (IsDashing)
-        // {
-        //     // accelerates into a dash as necessary
-        //     _rb.velocity = Vector3.MoveTowards(_rb.velocity, transform.forward * _dashSpeed, _dashAcceleration);
-        // }
-        // else if (IsTraveling)
-        // {
-        //     // accelerates into a travel as necessary
-        //     Vector3 dir = (_actions.Weapon.TravelNode.position - transform.position).normalized;
-        //     _rb.velocity = Vector3.MoveTowards(_rb.velocity, dir * _travelSpeed, _travelAcceleration);
-        // }
+        if (IsInPrivilegedMove)
+        {
+            UpdatePrivilegedMove();
+        }
+        else
+        {
+            ApplyMovement();
+            ApplyGravity();
+            
+            if (IsHighJumping)
+            {
+                UpdateHighJump();
+            }
+        }
     }
 
     void ApplyMovement()
@@ -145,22 +146,10 @@ public class PlayerMovement : MonoBehaviour
 
         // if the player is providing movement input and
         // is not in a movement type that prevents other movement
-        if (_moveInput.magnitude >= 0.05f && !IsInPrivilegedMove)
+        if (_moveInput.magnitude >= 0.05f)
         {
-            
             // calculate movement input in relation to camera
-            Vector2 input = _player.GetMove();
-            if (!_player.Camera.IsMovingToDefault)
-            {
-                Vector3 inputDir = new Vector3(input.x, 0, input.y);
-                if (Mathf.Approximately(Mathf.Abs(_player.Camera.GetForward().y), 1.0f))
-                {
-                    inputDir = new Vector3(input.x, input.y, 0);
-                }
-
-                _moveDir = _player.Camera.transform.TransformDirection(inputDir);
-            }
-            _moveDir.y = 0f; _moveDir.Normalize();
+            _moveDir = _player.Camera.InputToCameraDirection(_moveInput, _moveDir);
 
             // rotate player towards the movement direction if they are not aiming
             if (!_actions.IsAiming)
@@ -215,7 +204,7 @@ public class PlayerMovement : MonoBehaviour
             _currentAirTime += Time.fixedDeltaTime;
             AddSpeedModifier(_airSModKey, _airSpeedModifier);
         }
-        // if player is inthe air
+        // if player is in the air
         else if (!r)
         {
             _currentAirTime += Time.fixedDeltaTime;
@@ -230,6 +219,8 @@ public class PlayerMovement : MonoBehaviour
         IsHighJumping = false;
         SlowFall(false);
         RemoveSpeedModifier(_airSModKey);
+
+        _canDash = true;
 
         // play haptics
         if (Mathf.Abs(_rb.velocity.y) > _player.HapticsSettings.D_threshold.x)
@@ -337,54 +328,85 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void Dash()
+    void UpdatePrivilegedMove()
     {
-        // if (!_actions.IsAiming && !IsHighJumping && !IsTraveling)
-        // {
-        //     StartCoroutine(DoDash());
-        //     Debug.Log("Dash");
-        // }
+        if (IsDashing)
+        {
+            UpdateDash();
+        }
+        else if (IsTraveling)
+        {
+            UpdateTravel();
+        }
     }
 
-    // private IEnumerator DoDash()
-    // {
-    //     SlowFall(false);
-    //     IsDashing = true;
+    public void Dash()
+    {
+        if (_canDash && !_actions.IsAiming && !IsHighJumping && !IsTraveling)
+        {
+            // dash in the direction of input. if no input, dash forward instead
+            if (_player.GetMove().magnitude >= 0.05f)
+            {
+                _dashDir = _player.Camera.InputToCameraDirection(_player.GetMove(), transform.forward);
+            }
+            else
+            {
+                _dashDir = transform.forward;
+                _dashDir.y = 0;
+                _dashDir.Normalize();
+            }
+            
+            StartCoroutine(DoDash());
+            Debug.Log("Dash");
+        }
+    }
 
-    //     yield return new WaitForSeconds(_dashDuration);
+    private IEnumerator DoDash()
+    {
+        SlowFall(false);
+        _dashTimer = 0f;
+        IsDashing = true;
 
-    //     IsDashing = false;
-    // }
+        yield return new WaitForSeconds(_dashDuration);
+
+        IsDashing = false;
+        _canDash = IsGrounded;
+    }
+
+    void UpdateDash()
+    {
+        _dashTimer += Time.fixedDeltaTime;
+        _rb.velocity = _dashDir * _dashVelocity * _dashCurve.Evaluate(_dashTimer / _dashDuration);
+    }
 
     public void Travel()
     {
-        // if (!IsTraveling && _actions.Weapon.CanTravel())
-        // {
-        //     IsTraveling = true;
-        //     IsGrounded = false;
-        //     Debug.Log("Start Travel");
+        if (!IsTraveling && _actions.Weapon.CanTravel())
+        {
+            IsTraveling = true;
+            Debug.Log("Start Travel");
 
-        //     _travelHaptics = HapticsManager.StartRumble(_player.HapticsSettings.I_strength);
-        // }
+            _travelHaptics = HapticsManager.StartRumble(_player.HapticsSettings.I_strength);
+        }
     }
 
     public void EndTravel()
     {
-        // if (IsTraveling)
-        // {
-        //     _rb.velocity = Vector3.zero;
-        //     IsTraveling = false;
-        //     IsGrounded = false;
-        //     Debug.Log("End Travel");
+        if (IsTraveling)
+        {
+            _rb.velocity *= Mathf.Clamp(_travelSpeedConservation, 0f, 1f);
+            IsTraveling = false;
+            Debug.Log("End Travel");
 
-        //     HapticsManager.StopRumble(_travelHaptics);
-        //     HapticsManager.TimedRumble(_player.HapticsSettings.I_impact, _player.HapticsSettings.I_duration);
-        // }
+            HapticsManager.StopRumble(_travelHaptics);
+            HapticsManager.TimedRumble(_player.HapticsSettings.I_impact, _player.HapticsSettings.I_duration);
+        }
     }
 
-    public void UpdatePrivilegedMovement()
+    void UpdateTravel()
     {
-        //
+        Vector3 dir = (_actions.Weapon.TravelNode.position - transform.position).normalized;
+        _rb.velocity = Vector3.MoveTowards(_rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
     }
 
     // helper functions to forcibly adjust the rotation the player should be facing in

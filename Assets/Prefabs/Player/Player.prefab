@@ -440,8 +440,8 @@ Rigidbody:
   m_GameObject: {fileID: 2130351207501661897}
   serializedVersion: 4
   m_Mass: 60
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_Drag: 5
+  m_AngularDrag: 4
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -453,7 +453,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 112
@@ -529,19 +529,65 @@ MonoBehaviour:
   _moveSpeed: 50
   _turnSpeed: 1800
   _slopeTolerance: 45
-  _gravity: {x: 0, y: -9.81, z: 0}
+  _groundCheckRadius: 0.85
+  _groundCheckPadding: 0.05
+  _gravity: {x: 0, y: -14, z: 0}
   AimSpeedModifier: 0.25
   _airSpeedModifier: 1
-  _slowFallVelocityY: 2
+  _slowFallVelocityY: -3.5
   _slowFallAirSpeedModifier: 0.5
   _maxJumps: 2
-  _jumpForce: 6.5
-  _highJumpForce: 13
+  _airJumpPenalty: 1
+  _jumpVelocity: 40
+  _highJumpVelocity: 75
+  _coyoteTime: 0.15
+  _dashVelocity: 80
+  _dashCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0.43349144
+      outSlope: 0.43349144
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.06992823
+    - serializedVersion: 3
+      time: 0.4489127
+      value: 1.0040861
+      inSlope: 0.0058445204
+      outSlope: 0.0058445204
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.3513275
+    - serializedVersion: 3
+      time: 0.6493319
+      value: 1.0044001
+      inSlope: 0.007827465
+      outSlope: 0.007827465
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.38490057
+    - serializedVersion: 3
+      time: 1.0000184
+      value: 0.2508863
+      inSlope: -5.6039953
+      outSlope: -5.6039953
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.04516786
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _dashDuration: 0.2
-  _dashSpeed: 40
-  _dashAcceleration: 1000
-  _travelSpeed: 60
-  _travelAcceleration: 1500
+  _travelSpeed: 65
+  _travelAcceleration: 500
+  _travelSpeedConservation: 0.35
 --- !u!114 &2130351207501661890
 MonoBehaviour:
   m_ObjectHideFlags: 0

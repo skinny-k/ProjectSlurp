@@ -182,4 +182,28 @@ public class PlayerCamera : MonoBehaviour
             return Vector3.Lerp(dirA, dirB, _blend.TimeInBlend / _blend.Duration).normalized;
         }
     }
+
+    public Vector3 InputToCameraDirection(Vector2 input, Vector3 defaultVector)
+    {
+        if (!IsMovingToDefault)
+        {
+            Vector3 inputDir = new Vector3(input.x, 0, input.y);
+            if (Mathf.Approximately(Mathf.Abs(GetForward().y), 1.0f))
+            {
+                inputDir.y = input.y;
+                inputDir.z = 0;
+            }
+
+            Vector3 result = transform.TransformDirection(inputDir);
+            result.y = 0f;
+            result.Normalize();
+            return result;
+        }
+        else
+        {
+            defaultVector.y = 0f;
+            defaultVector.Normalize();
+            return defaultVector;
+        }
+    }
 }
