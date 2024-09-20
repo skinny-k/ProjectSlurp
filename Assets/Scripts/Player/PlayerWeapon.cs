@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Animations;
 
 [RequireComponent(typeof(Rigidbody))]
-public class Weapon : MonoBehaviour, IThrowable, IReturnable
+public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
 {
     [Header("Visual Settings")]
     [SerializeField] Vector3 _baseRotation = new Vector3(-70, 0, 0);
@@ -18,6 +19,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
 
     // TODO: enable/disable hurt box based on weapon context
     private DamageVolume _hurtbox;
+    private ParentConstraint _constraint;
     private Rigidbody _rb;
     private Quaternion _throwRotation;
     private Vector3 _lastThrownFrom;
@@ -38,6 +40,7 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
         // initialize weapon settings
         _rb = GetComponent<Rigidbody>();
         _hurtbox = transform.Find("Hurt Box").GetComponent<DamageVolume>();
+        _constraint = GetComponent<ParentConstraint>();
         TravelNode = transform.Find("Travel Node");
 
         transform.localRotation = Quaternion.Euler(_baseRotation);
@@ -61,9 +64,9 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             }
 
             // rotate toward the target rotation as necessary
-            if (transform.localRotation != Quaternion.Euler(targetRot))
+            if (_constraint.GetRotationOffset(0) != targetRot)
             {
-                transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.Euler(targetRot), 0.75f);
+                _constraint.SetRotationOffset(0, Vector3.Slerp(_constraint.GetRotationOffset(0), targetRot, 0.02f));
             }
         }
         else if (!IsHeld && IsThrown)
@@ -103,11 +106,20 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             // if the weapon was on its way out when it collided...
             if (IsThrown && !IsReturning)
             {
+                // TODO: Still having weird stuff with this for rotated objects
                 // stop and parent the weapon to the hit object
-                // TODO: can this work without parenting?
                 _rb.velocity = Vector3.zero;
-                transform.SetParent(collision.transform, true);
-                transform.localScale = (new Vector3(1 / collision.transform.localScale.x, 1 / collision.transform.localScale.y, 1 / collision.transform.localScale.z));
+
+                if (_constraint.sourceCount > 0)
+                {
+                    _constraint.RemoveSource(0);
+                }
+                ConstraintSource source = new ConstraintSource();
+                source.sourceTransform = collision.transform; source.weight = 1;
+                _constraint.AddSource(source);
+                _constraint.SetTranslationOffset(0, transform.position - collision.transform.position);
+                _constraint.SetRotationOffset(0, transform.rotation.eulerAngles - collision.transform.rotation.eulerAngles);
+
                 IsThrown = false;
             }
             else if (collision.gameObject.GetComponent<Player>() != null) // if the weapon touched the player...
@@ -126,6 +138,11 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
     // NOTE: speed is inherited from IThrowable, but is not used in this implementation
     public void Throw(Vector3 dir, float speed = 0)
     {
+        if (_constraint.sourceCount > 0)
+        {
+            _constraint.RemoveSource(0);
+        }
+        
         // track where the weapon was thrown from
         // this is useful for the boomerang effect that the weapon has
         _lastThrownFrom = transform.position;
@@ -149,11 +166,21 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
             Owner = player;
         }
 
+        if (_constraint.sourceCount > 0)
+        {
+            _constraint.RemoveSource(0);
+        }
+
         // return to the player
         // NOTE: speed is non-constant to ensure that the weapon always returns in a predictable amount of time
         IsReturning = true;
         _rb.isKinematic = false;
         _returnSpeed = Vector3.Distance(transform.position, player.transform.position) / _returnTime;
+    }
+
+    public bool CanTravel()
+    {
+        return !IsHeld && !IsReturning & !IsThrown;
     }
 
     private void ReparentTo(Player player)
@@ -162,10 +189,15 @@ public class Weapon : MonoBehaviour, IThrowable, IReturnable
 
         GetComponent<Collider>().enabled = false;
 
-        // parent the weapon back to the player
-        transform.parent = player.transform;
-        transform.localPosition = _holdPosition;
-        transform.localRotation = Quaternion.Euler(_baseRotation);
+        if (_constraint.sourceCount > 0)
+        {
+            _constraint.RemoveSource(0);
+        }
+        ConstraintSource source = new ConstraintSource();
+        source.sourceTransform = Owner.transform; source.weight = 1;
+        _constraint.AddSource(source);
+        _constraint.SetTranslationOffset(0, _holdPosition);
+        _constraint.SetRotationOffset(0, _constraint.rotationAtRest);
         
         _rb.velocity = Vector3.zero;
         _rb.isKinematic = true;

@@ -31,6 +31,7 @@ public class PlayerCamera : MonoBehaviour
     public bool IsMovingToDefault { get; private set; } = false;
 
     private Player _player;
+    private Vector2 _cameraInput;
     private CinemachineBrain _cm;
 
     void OnValidate()
@@ -69,6 +70,27 @@ public class PlayerCamera : MonoBehaviour
 
     void Update()
     {
+        // fix input as necessary
+        _cameraInput = FixInput(_player.GetCamera());
+        if (_cameraInput.magnitude >= 0.05f)
+        {
+            IsMovingToDefault = false;
+
+            if (IsAiming)
+            {
+                // apply the input movement to the aim camera and rotate the player to match
+                _aimCameraSpringArm.ApplyYaw(_cameraInput.x * _aimSensitivity * Time.deltaTime);
+                _aimCameraSpringArm.ApplyRoll(-_cameraInput.y * _aimSensitivity * Time.deltaTime);
+                _player.Rotate(_cameraInput, _aimSensitivity);
+            }
+            else
+            {
+                // apply the input movement to the follow camera
+                _followCameraSpringArm.ApplyYaw(_cameraInput.x * _rotationalSpeed * Time.deltaTime);
+                _followCameraSpringArm.ApplyRoll(_cameraInput.y * _rotationalSpeed * Time.deltaTime);
+            }
+        }
+        
         // move the follow camera toward its default rotation as necessary
         if (IsMovingToDefault)
         {
@@ -94,26 +116,6 @@ public class PlayerCamera : MonoBehaviour
     public void SetPlayer(Player player)
     {
         _player = player;
-    }
-
-    public void Move(Vector2 input)
-    {
-        IsMovingToDefault = false;
-        // fix input as necessary
-        input = FixInput(input);
-        if (IsAiming)
-        {
-            // apply the input movement to the aim camera and rotate the player to match
-            _aimCameraSpringArm.ApplyYaw(input.x * _aimSensitivity * Time.deltaTime);
-            _aimCameraSpringArm.ApplyRoll(-input.y * _aimSensitivity * Time.deltaTime);
-            _player.Rotate(input, _aimSensitivity);
-        }
-        else
-        {
-            // apply the input movement to the follow camera
-            _followCameraSpringArm.ApplyYaw(input.x * _rotationalSpeed * Time.deltaTime);
-            _followCameraSpringArm.ApplyRoll(input.y * _rotationalSpeed * Time.deltaTime);
-        }
     }
 
     public void MoveToDefault()
@@ -178,6 +180,30 @@ public class PlayerCamera : MonoBehaviour
             Vector3 dirA = _blend.CamA.VirtualCameraGameObject.transform.forward;
             Vector3 dirB = _blend.CamB.VirtualCameraGameObject.transform.forward;
             return Vector3.Lerp(dirA, dirB, _blend.TimeInBlend / _blend.Duration).normalized;
+        }
+    }
+
+    public Vector3 InputToCameraDirection(Vector2 input, Vector3 defaultVector)
+    {
+        if (!IsMovingToDefault)
+        {
+            Vector3 inputDir = new Vector3(input.x, 0, input.y);
+            if (Mathf.Approximately(Mathf.Abs(GetForward().y), 1.0f))
+            {
+                inputDir.y = input.y;
+                inputDir.z = 0;
+            }
+
+            Vector3 result = transform.TransformDirection(inputDir);
+            result.y = 0f;
+            result.Normalize();
+            return result;
+        }
+        else
+        {
+            defaultVector.y = 0f;
+            defaultVector.Normalize();
+            return defaultVector;
         }
     }
 }

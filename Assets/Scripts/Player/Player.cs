@@ -40,22 +40,10 @@ public class Player : Entity
         }
     }
 
-    /*
-    // resets the camera to default if necessary
-    void Update()
-    {
-        if (_lastCameraMove != 0 && _input.GetInputValueAsVector2("Move") == Vector2.zero)
-        {
-            _lastCameraMove = 0;
-            MoveCamera(Vector2.zero);
-        }
-    }
-    */
-
     protected void SubscribeToInput()
     {
-        _input.OnMove += Move;
-        _input.OnCameraMove += MoveCamera;
+        // _input.OnMove += Move;
+        // _input.OnCameraMove += MoveCamera;
         _input.OnJump += Jump;
         _input.OnSlowFall += SlowFall;
         _input.OnHighJump += HighJump;
@@ -70,8 +58,8 @@ public class Player : Entity
 
     protected void UnsubscribeToInput()
     {
-        _input.OnMove -= Move;
-        _input.OnCameraMove -= MoveCamera;
+        // _input.OnMove -= Move;
+        // _input.OnCameraMove -= MoveCamera;
         _input.OnJump -= Jump;
         _input.OnSlowFall -= SlowFall;
         _input.OnHighJump -= HighJump;
@@ -92,28 +80,16 @@ public class Player : Entity
     }
 
     // helper functions that coordinate responses to input from the player component classes
-    protected void Move(Vector2 value)
-    {
-        _movement.Move(value);
+    // protected void Move(Vector2 value)
+    // {
+    //     _movement.Move(value);
+    // }
 
-        /*
-        // resets the camera to its default rotation after a delay while moving
-        if (_input.GetInputValueAsVector2("Camera") == Vector2.zero && _lastCameraMove < _camera.ResetDelay)
-        {
-            _lastCameraMove += Time.deltaTime;
-            if (_lastCameraMove >= _camera.ResetDelay)
-            {
-                _camera.MoveToDefault();
-            }
-        }
-        */
-    }
-
-    protected void MoveCamera(Vector2 value)
-    {
-        _camera.Move(value);
-        // _lastCameraMove = 0;
-    }
+    // protected void MoveCamera(Vector2 value)
+    // {
+    //     _camera.Move(value);
+    //     // _lastCameraMove = 0;
+    // }
 
     protected void Jump()
     {
@@ -164,5 +140,15 @@ public class Player : Entity
     protected void ShoulderSwitch()
     {
         _camera.ShoulderSwitch();
+    }
+
+    public Vector2 GetMove()
+    {
+        return _input.GetInputValueAsVector2("Move");
+    }
+
+    public Vector2 GetCamera()
+    {
+        return _input.GetInputValueAsVector2("Camera");
     }
 }

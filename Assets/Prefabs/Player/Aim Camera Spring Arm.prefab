@@ -26,13 +26,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3901744032825511539}
+  serializedVersion: 2
   m_LocalRotation: {x: 0.15617144, y: -0.4433558, z: 0.07875541, w: -0.87911534}
   m_LocalPosition: {x: 0.000014662743, y: -1.6898693, z: 5.0290356}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 3901744033109991385}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3901744032825511543
 MonoBehaviour:
@@ -119,6 +119,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3901744033109991387}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 2.315231, y: 2.315231, z: -3.0869746}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -126,7 +127,6 @@ Transform:
   m_Children:
   - {fileID: 3901744032825511536}
   m_Father: {fileID: 3901744033936113107}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3901744033109991384
 MonoBehaviour:
@@ -157,6 +157,7 @@ MonoBehaviour:
     ModeOverride: 0
     LensShift: {x: 0, y: 0}
     GateFit: 2
+    FocusDistance: 10
     m_SensorSize: {x: 1, y: 1}
   m_Transitions:
     m_BlendHint: 0
@@ -190,14 +191,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3901744033936113101}
-  m_LocalRotation: {x: 0.061049, y: 0, z: 0, w: 0.9981348}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.061048996, y: 0, z: 0, w: 0.9981348}
   m_LocalPosition: {x: 0, y: 1.8, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3901744033109991385}
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 7, y: 0, z: 0}
 --- !u!114 &3901744033936113106
 MonoBehaviour:
@@ -214,7 +215,7 @@ MonoBehaviour:
   _camera: {fileID: 3901744033109991384}
   _minimumArmLength: 1
   _targetArmLength: 4.5
-  _armOffsetProportions: {x: 2.25, y: 2.25, z: -3}
+  _armOffsetProportions: {x: 0.51449573, y: 0.51449573, z: -0.6859943}
   _collisionOffset: 0.1
   layers:
     serializedVersion: 2

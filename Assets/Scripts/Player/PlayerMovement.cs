@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,46 +6,78 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // Handles player movement and movement abilities
-[RequireComponent(typeof(Rigidbody))]
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Basic Movement Settings")]
     [SerializeField] float _moveSpeed = 5f;
     [SerializeField] float _turnSpeed = 360f;
+    [Tooltip("The steepest slope the player can walk up.")]
+    [SerializeField][Range(0f, 90f)] float _slopeTolerance = 45f;
+    [SerializeField] float _groundCheckRadius = 0.85f;
+    [SerializeField] float _groundCheckPadding = 0.05f;
+
+    [Header("Gravity")]
+    [Tooltip("The force of the custom gravity. It is recommended you use the same value listed in the Physics section of Project Settings.")]
+    [SerializeField] Vector3 _gravity = new Vector3(0, -9.81f, 0);
 
     [Header("Aim Movement Settings")]
-    [SerializeField] public float AimSpeedModifier = 0.5f;
+    [SerializeField][Range(0f, 1f)] public float AimSpeedModifier = 0.5f;
 
     [Header("Air Settings")]
-    [SerializeField] float _airSpeedModifier = 1f;
+    [Tooltip("The speed reduction applied to the player while in the air.")]
+    [SerializeField][Range(0f, 1f)] float _airSpeedModifier = 1f;
     [SerializeField] float _slowFallVelocityY = 1f;
-    [SerializeField] float _slowFallAirSpeedModifier = 0.5f;
+    [Tooltip("The speed reduction applied to the player while slow falling. Compounds with Air Speed Modifier.")]
+    [SerializeField][Range(0f, 1f)] float _slowFallAirSpeedModifier = 0.5f;
 
     [Header("Jump Settings")]
+    [Tooltip("The number of jumps the player can make.")]
     [SerializeField] int _maxJumps = 2;
-    [SerializeField] float _jumpForce = 10f;
-    [SerializeField] float _highJumpForce = 20f;
+    [Tooltip("If the player jumps in the air after falling off a ledge, the number of additional jumps to penalize them by.")]
+    [SerializeField] int _airJumpPenalty = 1;
+    [SerializeField] float _jumpVelocity = 10f;
+    [SerializeField] float _highJumpVelocity = 20f;
+    [Tooltip("The amount of grace time the player has after walking off a ledge to make their first jump without penalty.")]
+    [SerializeField] float _coyoteTime = 0.15f;
 
     [Header("Dash Settings")]
+    [SerializeField] float _dashVelocity = 15f;
+    [SerializeField] AnimationCurve _dashCurve;
     [SerializeField] float _dashDuration = 0.5f;
-    [SerializeField] float _dashSpeed = 15f;
-    [SerializeField] float _dashAcceleration = 20f;
 
     [Header("Travel Settings")]
     [SerializeField] float _travelSpeed = 25f;
     [SerializeField] float _travelAcceleration = 35f;
+    [SerializeField][Range(0f, 1f)] float _travelSpeedConservation = 0.5f;
 
     private InputManager _input;
     private Player _player;
     private PlayerActions _actions;
 
-    private List<float> _speedModifiers = new List<float>();
+    private Rigidbody _rb;
+    private CapsuleCollider _col;
+
+    private Dictionary<string, float> _speedModifiers = new Dictionary<string, float>();
     private float _netSpeedModifier = 1f;
+    private string _airSModKey;
+    private string _highJumpSModKey;
+    private string _slowFallSModKey;
     
     private int _currentJumps = 0;
+    private float _currentAirTime = 0f;
 
     private Vector3 _targetRot;
+    private Vector2 _moveInput;
     private Vector3 _moveDir = Vector3.zero;
+
+    private bool _canDash = true;
+    private Vector3 _dashDir;
+    private float _dashTimer = 0f;
+
+    private GroundInfo _ground;
+    private RaycastHit _groundHit;
+    private float _groundCheckDistance;
+    private float _halfHeight;
 
     private HapticsManager.HapticEventInfo _slowFallHaptics;
     private HapticsManager.HapticEventInfo _travelHaptics;
@@ -57,14 +90,24 @@ public class PlayerMovement : MonoBehaviour
 
     public bool IsInPrivilegedMove => IsDashing || IsTraveling;
     public bool IsInActiveAerial => IsHighJumping || IsSlowFalling;
-
+    
     void Start()
     {
         _input = GetComponent<InputManager>();
         _player = GetComponent<Player>();
         _actions = GetComponent<PlayerActions>();
 
+        _rb = _player.Rb;
+        _col = GetComponent<CapsuleCollider>();
+
         _moveDir = transform.forward;
+
+        _halfHeight = (_col.height / 2) * transform.localScale.y;
+        _groundCheckDistance = _halfHeight - _groundCheckRadius + _groundCheckPadding;
+
+        _airSModKey = GetInstanceID() + "_air";
+        _highJumpSModKey = GetInstanceID() + "_hij";
+        _slowFallSModKey = GetInstanceID() + "_slf";
     }
 
     void Update()
@@ -78,49 +121,123 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (IsHighJumping && _player.Rb.velocity.y > 0)
+        CheckGrounded();
+
+        if (IsInPrivilegedMove)
         {
-            // decreases the player's speed when they start a high jump
-            // this speed returns as the player reaches the apex of their jump
-            // NOTE: This speed modifier is not added the the list of speed modifiers so that it is easier to
-            //       remove last frame's speed modifier. However, this means that the net speed modifier must
-            //       be recalculated on each frame of a high jump as well. 1-frame changes in net speed
-            //       modifier may occur, but should be negligible.
-            RecalculateNetSpeedModifier();
-            _netSpeedModifier *= Mathf.Clamp((8f - _player.Rb.velocity.y) / 12f, 0, 1);
+            UpdatePrivilegedMove();
         }
-        else if (IsHighJumping && _player.Rb.velocity.y < 0)
+        else
         {
-            // a high jump ends once a player reaches the apex of their high jump
-            IsHighJumping = false;
+            ApplyMovement();
+            ApplyGravity();
+            
+            if (IsHighJumping)
+            {
+                UpdateHighJump();
+            }
         }
-        
-        if (IsDashing)
+    }
+
+    void ApplyMovement()
+    {
+        // get movement input
+        _moveInput = _player.GetMove();
+
+        // if the player is providing movement input and
+        // is not in a movement type that prevents other movement
+        if (_moveInput.magnitude >= 0.05f)
         {
-            // accelerates into a dash as necessary
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, transform.forward * _dashSpeed, _dashAcceleration * Time.deltaTime);
+            // calculate movement input in relation to camera
+            _moveDir = _player.Camera.InputToCameraDirection(_moveInput, _moveDir);
+
+            // rotate player towards the movement direction if they are not aiming
+            if (!_actions.IsAiming)
+            {
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(_moveDir, Vector3.up), _turnSpeed * Time.deltaTime);
+            }
+
+            // finalize movement
+            if (IsGrounded)
+            {
+                if (!_ground.Steeper(_slopeTolerance))
+                {
+                    _rb.AddForce(Vector3.ProjectOnPlane(_moveDir, _ground.normal).normalized * _moveSpeed * _netSpeedModifier * _rb.mass, ForceMode.Force);
+                }
+            }
+            else
+            {
+                _rb.AddForce(_moveDir * _moveSpeed * _netSpeedModifier * _rb.mass, ForceMode.Force);
+            }
         }
-        else if (!IsTraveling)
+    }
+
+    void ApplyGravity()
+    {
+        if (!IsGrounded)
         {
-            // decelerates out of a dash as necessary if not traveling
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, new Vector3(0, _player.Rb.velocity.y, 0), _dashAcceleration * Time.deltaTime);
+            if (IsSlowFalling)
+            {
+                _rb.velocity = new Vector3(_rb.velocity.x, _slowFallVelocityY, _rb.velocity.z);
+            }
+            else
+            {
+                _rb.AddForce(_gravity * (IsHighJumping ? 0.5f : 1) * _rb.drag, ForceMode.Acceleration);
+            }
+        }
+    }
+
+    private bool CheckGrounded()
+    {
+        bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"));
+        _ground.UpdateFromRaycastHit(_groundHit);
+
+        // if player hit the ground this physics step
+        if (!IsGrounded && r)
+        {
+            _currentAirTime = 0f;
+            HitGround();
+        }
+        // if player left the ground
+        else if (IsGrounded && !r)
+        {
+            _currentAirTime += Time.fixedDeltaTime;
+            AddSpeedModifier(_airSModKey, _airSpeedModifier);
+        }
+        // if player is in the air
+        else if (!r)
+        {
+            _currentAirTime += Time.fixedDeltaTime;
+        }
+        IsGrounded = r;
+        return IsGrounded;
+    }
+
+    void HitGround()
+    {
+        _currentJumps = 0;
+        IsHighJumping = false;
+        SlowFall(false);
+        RemoveSpeedModifier(_airSModKey);
+
+        _canDash = true;
+
+        // play haptics
+        if (Mathf.Abs(_rb.velocity.y) > _player.HapticsSettings.D_threshold.x)
+        {
+            float str = Mathf.Clamp((Mathf.Abs(_rb.velocity.y) - _player.HapticsSettings.D_threshold.x) / (_player.HapticsSettings.D_threshold.y - _player.HapticsSettings.D_threshold.x), 0, 1);
+            Debug.Log(Mathf.Abs(_rb.velocity.y) + " : " + str);
+            HapticsManager.TimedRumble(_player.HapticsSettings.D_strength * str, _player.HapticsSettings.D_duration);
         }
 
-        if (IsTraveling)
-        {
-            // accelerates into a travel as necessary
-            Vector3 dir = (_actions.PlayerWeapon.TravelNode.position - transform.position).normalized;
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
-        }
-        else if (!IsDashing)
-        {
-            // decelerates out of a travel as necessary if not dashing
-            _player.Rb.velocity = Vector3.MoveTowards(_player.Rb.velocity, new Vector3(0, _player.Rb.velocity.y, 0), _travelAcceleration * Time.deltaTime);
-        }
+        // prevent any bouncing from happening
+        _rb.velocity = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
     }
 
     void OnCollisionEnter(Collision collision)
     {
+        // TODO: Add haptic feedback for collision?
+        
         if (collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
             // forces the player's weapon to return if they hit part of the environment while traveling
@@ -129,136 +246,29 @@ public class PlayerMovement : MonoBehaviour
             {
                 _actions.ForceWeaponReturn();
             }
-            
-            // resets the player's jumps and aerial movement abilities if they touched the ground
-            if (Mathf.Abs(collision.transform.position.y - transform.position.y) <= 0.05f)
-            {
-                
-                _currentJumps = 0;
-                IsGrounded = true;
-                IsHighJumping = false;
-                SlowFall(false);
-
-                float hapticStrength = collision.relativeVelocity.magnitude < _player.HapticsSettings.D_threshold ? _player.HapticsSettings.D_strength_1 : _player.HapticsSettings.D_strength_2;
-                HapticsManager.TimedRumble(hapticStrength, _player.HapticsSettings.D_duration);
-            }
-        }
-    }
-
-    // forcibly rotates the player
-    // useful when rotating the player while aiming
-    public void AddRotation(Vector2 input, float sensitivity)
-    {
-        _targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
-    }
-
-    public void RotateTo(Vector3 rotation)
-    {
-        // sets the rotation the player should be facing in
-        // this helps rotational movement look a little more smooth
-        _targetRot = rotation;
-    }
-    
-    public void Move(Vector2 input)
-    {
-        // if the player is not dashing or traveling, which prevent other types of movement...
-        if (!IsInPrivilegedMove)
-        {
-            // calculates and applies the movement input in relation to the camera
-            input = input.normalized;
-            float speedThisFrame = _moveSpeed * _netSpeedModifier;
-            if (!_player.Camera.IsMovingToDefault)
-            {
-                Vector3 inputDir = new Vector3(input.x, 0, input.y);
-                if (Mathf.Approximately(Mathf.Abs(_player.Camera.GetForward().y), 1.0f))
-                {
-                    inputDir = new Vector3(input.x, input.y, 0);
-                }
-
-                _moveDir = _player.Camera.transform.TransformDirection(inputDir);
-            }
-            _moveDir = (new Vector3(_moveDir.x, 0, _moveDir.z)).normalized;
-            transform.position += _moveDir * speedThisFrame * Time.deltaTime;
-
-            // rotate the player towards the movement direction if they are not aiming
-            if (!_actions.IsAiming)
-            {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(_moveDir, Vector3.up), _turnSpeed * Time.deltaTime);
-            }
         }
     }
 
     public void Jump()
     {
-        // if the player is not dashing or traveling and has remaining jumps...
+        // if the player is not dashing or traveling and has jumps remaining
         if (!IsInPrivilegedMove && _currentJumps < _maxJumps)
         {
-            // the player should lose one jump when they walk off an edge
-            // TODO: rework this so it will work when jumps are increased
-            if (!IsGrounded)
+            // increment jumps -- logic should cover all cases
+            // if the player is grounded or is not making their first jump or is making their first jump but has coyote time left
+            if (IsGrounded || _currentJumps != 0 || _currentAirTime <= _coyoteTime)
             {
-                _currentJumps = _maxJumps;
-            }
-            else 
-            {
-                // reduce speed in air
-                // TODO: rework this so that it will apply when the player walks off of an edge
-                if (_airSpeedModifier != 1f)
-                {
-                    AddSpeedModifier(_airSpeedModifier);
-                }
                 _currentJumps++;
             }
-            
-            // add jump force
-            _player.Rb.velocity = Vector3.up * _jumpForce;
-            IsGrounded = false;
+            // if the player is making their first jump from the air without coyote time
+            else if (!IsGrounded && _currentJumps == 0 && _currentAirTime > _coyoteTime)
+            {
+                // add the air jump penalty
+                _currentJumps = _airJumpPenalty + 1;
+            }
 
+            _rb.velocity = new Vector3(_rb.velocity.x, _jumpVelocity, _rb.velocity.z);
             Debug.Log("Jump");
-        }
-    }
-
-    public void SlowFall(bool isSlowFallHeld)
-    {
-        // if the player is not aiming, is not traveling and the new slow fall state would be a change
-        if (!_actions.IsAiming && IsSlowFalling != isSlowFallHeld && !IsTraveling)
-        {
-            IsSlowFalling = isSlowFallHeld;
-
-            // if the player is starting a slow fall...
-            if (IsSlowFalling)
-            {
-                // disable gravity and apply a constant downward velocity
-                _player.Rb.useGravity = false;
-                _player.Rb.velocity = new Vector3(_player.Rb.velocity.x, -1 * _slowFallVelocityY, _player.Rb.velocity.z);
-
-                // reduce speed in air, making sure that we're not doubling up first
-                if (_slowFallAirSpeedModifier != 1f)
-                {
-                    RemoveSpeedModifier(_airSpeedModifier);
-                    AddSpeedModifier(_slowFallAirSpeedModifier);
-                }
-
-                _slowFallHaptics = HapticsManager.StartRumble(_player.HapticsSettings.G_strength);
-            }
-            else // if the player is ending a slow fall...
-            {
-                // turn gravity back on
-                // NOTE: slow fall speed should be less than terminal velocity, so we don't need to set vertical velocity
-                _player.Rb.useGravity = true;
-                
-                // if the player is still in the air, make sure the normal air speed modifier is active
-                RemoveSpeedModifier(_slowFallAirSpeedModifier);
-                if (_airSpeedModifier != 1f && !IsGrounded && !_speedModifiers.Contains(_airSpeedModifier))
-                    AddSpeedModifier(_airSpeedModifier);
-
-                HapticsManager.StopRumble(_slowFallHaptics);
-            }
-
-            string msg = "Start ";
-            if (!IsSlowFalling)
-                msg = "End ";
-            Debug.Log(msg + "Slow Fall");
         }
     }
 
@@ -267,35 +277,111 @@ public class PlayerMovement : MonoBehaviour
         // if the player is not aiming and is stationary on the ground...
         if (!_actions.IsAiming && IsGrounded && !IsInPrivilegedMove && _input.GetInputValueAsVector2("Move") == Vector2.zero)
         {
-            // TODO: consolidate air speed modifier applications as much as possible
-            if (_airSpeedModifier != 1f)
-            {
-                AddSpeedModifier(_airSpeedModifier);
-            }
-            
             // apply jump force
-            _player.Rb.velocity = Vector3.up * _highJumpForce;
+            _rb.velocity = Vector3.up * _highJumpVelocity;
             _currentJumps = _maxJumps;
-            IsGrounded = false;
             IsHighJumping = true;
+            AddSpeedModifier(_highJumpSModKey, 0);
 
             Debug.Log("High Jump");
             HapticsManager.TimedRumble(_player.HapticsSettings.F_strength, _player.HapticsSettings.F_duration);
         }
     }
 
+    private void UpdateHighJump()
+    {
+        // decreases the player's speed when they start a high jump
+        // this speed returns as the player reaches the apex of their jump
+        // if the resulting speed modifier is 1, the player is at the apex of the jump, so end high jump
+        if (SetSpeedModifier(_highJumpSModKey, Mathf.Clamp((_highJumpVelocity - _rb.velocity.y) / _highJumpVelocity, 0, 1)) >= 1f)
+        {
+            RemoveSpeedModifier(_highJumpSModKey);
+            IsHighJumping = false;
+        }
+    }
+
+    public void SlowFall(bool isSlowFallHeld)
+    {
+        // if the player is not aiming or in a privileged move and the new slow fall state would be a change
+        if (!_actions.IsAiming && !IsInPrivilegedMove && IsSlowFalling != isSlowFallHeld)
+        {
+            IsSlowFalling = isSlowFallHeld;
+
+            // if the player is starting a slow fall
+            if (IsSlowFalling)
+            {
+                // apply a constant downward velocity
+                _rb.velocity = new Vector3(_rb.velocity.x, _slowFallVelocityY, _rb.velocity.z);
+
+                // add slow fall speed modifier
+                AddSpeedModifier(_slowFallSModKey, _slowFallAirSpeedModifier);
+                _slowFallHaptics = HapticsManager.StartRumble(_player.HapticsSettings.G_strength);
+                Debug.Log("Start Slow Fall");
+            }
+            // if the player is ending a slow fall
+            else
+            {
+                RemoveSpeedModifier(_slowFallSModKey);
+                HapticsManager.StopRumble(_slowFallHaptics);
+                Debug.Log("End Slow Fall");
+            }
+        }
+    }
+
+    void UpdatePrivilegedMove()
+    {
+        if (IsDashing)
+        {
+            UpdateDash();
+        }
+        else if (IsTraveling)
+        {
+            UpdateTravel();
+        }
+    }
+
     public void Dash()
     {
-        if (!_actions.IsAiming && !IsHighJumping && !IsTraveling)
+        if (_canDash && !_actions.IsAiming && !IsHighJumping && !IsTraveling)
         {
+            // dash in the direction of input. if no input, dash forward instead
+            if (_player.GetMove().magnitude >= 0.05f)
+            {
+                _dashDir = _player.Camera.InputToCameraDirection(_player.GetMove(), transform.forward);
+            }
+            else
+            {
+                _dashDir = transform.forward;
+                _dashDir.y = 0;
+                _dashDir.Normalize();
+            }
+            
             StartCoroutine(DoDash());
             Debug.Log("Dash");
         }
     }
 
+    private IEnumerator DoDash()
+    {
+        SlowFall(false);
+        _dashTimer = 0f;
+        IsDashing = true;
+
+        yield return new WaitForSeconds(_dashDuration);
+
+        IsDashing = false;
+        _canDash = IsGrounded;
+    }
+
+    void UpdateDash()
+    {
+        _dashTimer += Time.fixedDeltaTime;
+        _rb.velocity = _dashDir * _dashVelocity * _dashCurve.Evaluate(_dashTimer / _dashDuration);
+    }
+
     public void Travel()
     {
-        if (!IsTraveling)
+        if (!IsTraveling && _actions.Weapon.CanTravel())
         {
             IsTraveling = true;
             Debug.Log("Start Travel");
@@ -308,7 +394,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (IsTraveling)
         {
-            _player.Rb.velocity = Vector3.zero;
+            _rb.velocity *= Mathf.Clamp(_travelSpeedConservation, 0f, 1f);
             IsTraveling = false;
             Debug.Log("End Travel");
 
@@ -317,48 +403,105 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    void UpdateTravel()
+    {
+        Vector3 dir = (_actions.Weapon.TravelNode.position - transform.position).normalized;
+        _rb.velocity = Vector3.MoveTowards(_rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
+    }
+
+    // helper functions to forcibly adjust the rotation the player should be facing in
+    // used when rotating the player while aiming
+    public void AddRotation(Vector2 input, float sensitivity)
+    {
+        _targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
+    }
+
+    public void RotateTo(Vector3 rotation)
+    {
+        _targetRot = rotation;
+    }
+
     // helper functions to apply and remove multiple speed modifiers more easily
-    public void AddSpeedModifier(float modifier)
+    public bool AddSpeedModifier(string key, float modifier)
     {
-        _speedModifiers.Add(modifier);
+        try
+        {
+            _speedModifiers.Add(key, modifier);
+        }
+        // modifier with key already exists
+        catch (ArgumentException ex)
+        {
+            Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
+            return false;
+        }
         RecalculateNetSpeedModifier();
+        return true;
     }
 
-    public IEnumerator AddSpeedModifierWithDuration(float modifier, float duration)
+    public IEnumerator AddSpeedModifierWithDuration(string key, float modifier, float duration)
     {
-        AddSpeedModifier(modifier);
+        if (AddSpeedModifier(key, modifier))
+        {
+            yield return new WaitForSeconds(duration);
 
-        yield return new WaitForSeconds(duration);
-
-        RemoveSpeedModifier(modifier);
+            RemoveSpeedModifier(key);
+        }
+        yield return null;
     }
 
-    public void RemoveSpeedModifier(float modifier)
+    public float SetSpeedModifier(string key, float modifier)
     {
-        _speedModifiers.Remove(modifier);
+        _speedModifiers[key] = modifier;
+        RecalculateNetSpeedModifier();
+        return _speedModifiers[key];
+    }
+
+    public void RemoveSpeedModifier(string key)
+    {
+        _speedModifiers.Remove(key);
         RecalculateNetSpeedModifier();
     }
 
     private void RecalculateNetSpeedModifier()
     {
         _netSpeedModifier = 1f;
-        foreach (float modifier in _speedModifiers)
+        foreach (float modifier in _speedModifiers.Values)
         {
+            // don't bother calculating if the modifier is one
+            if (modifier == 1f)
+            {
+                continue;
+            }
+
             _netSpeedModifier *= modifier;
+            // if _netSpeedModifier is ever 0, it won't ever increase, so end the calculation
             if (_netSpeedModifier == 0)
             {
-                break;
+                return;
             }
         }
     }
 
-    private IEnumerator DoDash()
+    internal struct GroundInfo
     {
-        SlowFall(false);
-        IsDashing = true;
+        public bool hit;
+        public Collider collider;
+        public Vector3 point;
+        public Vector3 normal;
+        public float angle;
 
-        yield return new WaitForSeconds(_dashDuration);
+        public void UpdateFromRaycastHit(RaycastHit hit)
+        {
+            this.hit = hit.transform != null;
+            this.collider = hit.collider;
+            this.point = hit.point;
+            normal = hit.normal;
+            angle = Vector3.Angle(normal, Vector3.up);
+        }
 
-        IsDashing = false;
+        public bool Steeper(float angle)
+        {
+            return hit && this.angle > angle;
+        }
     }
 }
