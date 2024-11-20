@@ -6,7 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(InputManager))]
 [RequireComponent(typeof(PlayerMovement))]
 [RequireComponent(typeof(PlayerActions))]
-public class Player : Entity
+public class Player : Character
 {
     [SerializeField] PlayerCamera _camera;
     [SerializeField] PlayerHapticsData _hapticsSettings;
