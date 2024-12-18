@@ -19,6 +19,8 @@ public class PlayerMovement : MonoBehaviour
     [Header("Gravity")]
     [Tooltip("The force of the custom gravity. It is recommended you use the same value listed in the Physics section of Project Settings.")]
     [SerializeField] Vector3 _gravity = new Vector3(0, -9.81f, 0);
+    [SerializeField] float _highJumpGravityModifier = 0.5f;
+    [SerializeField] float _diveGravityModifier = 4f;
 
     [Header("Aim Movement Settings")]
     [SerializeField][Range(0f, 1f)] public float AimSpeedModifier = 0.5f;
@@ -49,6 +51,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _travelSpeed = 25f;
     [SerializeField] float _travelAcceleration = 35f;
     [SerializeField][Range(0f, 1f)] float _travelSpeedConservation = 0.5f;
+
+    public event Action OnHitGround;
 
     private InputManager _input;
     private Player _player;
@@ -87,6 +91,7 @@ public class PlayerMovement : MonoBehaviour
     public bool IsSlowFalling { get; private set; } = false;
     public bool IsDashing { get; private set; } = false;
     public bool IsTraveling { get; private set; } = false;
+    public bool IsDiving { get; private set; } = false;
 
     public bool IsInPrivilegedMove => IsDashing || IsTraveling;
     public bool IsInActiveAerial => IsHighJumping || IsSlowFalling;
@@ -182,12 +187,12 @@ public class PlayerMovement : MonoBehaviour
             }
             else
             {
-                _rb.AddForce(_gravity * (IsHighJumping ? 0.5f : 1) * _rb.drag, ForceMode.Acceleration);
+                _rb.AddForce(_gravity * (IsDiving ? _diveGravityModifier : 1) * (IsHighJumping ? _highJumpGravityModifier : 1) * _rb.drag, ForceMode.Acceleration);
             }
         }
     }
 
-    private bool CheckGrounded()
+    private bool CheckGrounded(bool forced = false, float ySpeed = 0f)
     {
         bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"));
         _ground.UpdateFromRaycastHit(_groundHit);
@@ -196,7 +201,7 @@ public class PlayerMovement : MonoBehaviour
         if (!IsGrounded && r)
         {
             _currentAirTime = 0f;
-            HitGround();
+            HitGround(forced ? ySpeed : Mathf.Abs(_rb.velocity.y));
         }
         // if player left the ground
         else if (IsGrounded && !r)
@@ -213,7 +218,7 @@ public class PlayerMovement : MonoBehaviour
         return IsGrounded;
     }
 
-    void HitGround()
+    void HitGround(float ySpeed)
     {
         _currentJumps = 0;
         IsHighJumping = false;
@@ -223,15 +228,17 @@ public class PlayerMovement : MonoBehaviour
         _canDash = true;
 
         // play haptics
-        if (Mathf.Abs(_rb.velocity.y) > _player.HapticsSettings.D_threshold.x)
+        if (ySpeed > _player.HapticsSettings.D_threshold.x)
         {
-            float str = Mathf.Clamp((Mathf.Abs(_rb.velocity.y) - _player.HapticsSettings.D_threshold.x) / (_player.HapticsSettings.D_threshold.y - _player.HapticsSettings.D_threshold.x), 0, 1);
-            Debug.Log(Mathf.Abs(_rb.velocity.y) + " : " + str);
+            float str = Mathf.Clamp((ySpeed - _player.HapticsSettings.D_threshold.x) / (_player.HapticsSettings.D_threshold.y - _player.HapticsSettings.D_threshold.x), 0, 1);
             HapticsManager.TimedRumble(_player.HapticsSettings.D_strength * str, _player.HapticsSettings.D_duration);
         }
 
         // prevent any bouncing from happening
         _rb.velocity = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
+
+        Debug.Log("Hit the Ground!");
+        OnHitGround?.Invoke();
     }
 
     void OnCollisionEnter(Collision collision)
@@ -240,6 +247,8 @@ public class PlayerMovement : MonoBehaviour
         
         if (collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
+            CheckGrounded(true, Mathf.Abs(collision.relativeVelocity.y));
+            
             // forces the player's weapon to return if they hit part of the environment while traveling
             // NOTE: This will also force the travel to end immediately
             if (IsTraveling)
@@ -407,6 +416,13 @@ public class PlayerMovement : MonoBehaviour
     {
         Vector3 dir = (_actions.Weapon.TravelNode.position - transform.position).normalized;
         _rb.velocity = Vector3.MoveTowards(_rb.velocity, dir * _travelSpeed, _travelAcceleration * Time.deltaTime);
+    }
+
+    // helper function for diving
+    // most dive behavior is in PlayerActions, but since diving is also movement, some info is stored here for cohesion
+    public void SetDiving(bool state)
+    {
+        IsDiving = state;
     }
 
     // helper functions to forcibly adjust the rotation the player should be facing in

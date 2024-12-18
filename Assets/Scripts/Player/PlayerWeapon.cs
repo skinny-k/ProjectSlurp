@@ -3,15 +3,27 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
 
+public enum AttackType { None, Standard, Dive, Throw }
+
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
 {
+    [Header("Damage Settings")]
+    [SerializeField] int _attackDamage = 3;
+    [SerializeField] int _diveDamage = 4;
+    [SerializeField] int _throwDamage = 2;
+    [SerializeField] int _travelHitDamage = 5;
+    [SerializeField] int _travelEndDamage = 2;
+    
     [Header("Visual Settings")]
     [SerializeField] Vector3 _baseRotation = new Vector3(-70, 0, 0);
     [SerializeField] Vector3 _aimedRotation = new Vector3(-20, 0, 0);
     [SerializeField] Vector3 _holdPosition = new Vector3(1.4f, 0.6f, 0);
 
-    [Header("Other")]
+    [Header("Throw Settings")]
+    [SerializeField] float _throwSpeed = 4f;
+    [Tooltip("The maximum distance the weapon can be thrown before returning to the player.")]
+    [SerializeField] float _maxThrowDistance = 30f;
     [Tooltip("The time in seconds that it should take for the weapon to return to the owning player.")]
     [SerializeField] float _returnTime = 0.25f;
     [Tooltip("The distance from the player's hand the weapon should consider to be returned.")]
@@ -27,9 +39,14 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
 
     public PlayerActions Owner;
     public Transform TravelNode { get; private set; }
-    public float ThrowSpeed { get; private set; } = 4f;
-    public float MaxThrowDistance { get; private set; } = 30f;
+    public float ThrowSpeed => _throwSpeed;
+    public float MaxThrowDistance => _maxThrowDistance;
     public float ReturnTime => _returnTime;
+    public int AttackDamage => _attackDamage;
+    public int DiveDamage => _diveDamage;
+    public int ThrowDamage => _throwDamage;
+    public int TravelHitDamage => _travelHitDamage;
+    public int TravelEndDamage => _travelEndDamage;
     public bool IsAiming { get; private set; } = false;
     public bool IsHeld { get; private set; } = true;
     public bool IsThrown { get; private set; } = false;
@@ -42,6 +59,8 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
         _hurtbox = transform.Find("Hurt Box").GetComponent<DamageVolume>();
         _constraint = GetComponent<ParentConstraint>();
         TravelNode = transform.Find("Travel Node");
+
+        EnableDamage(false);
 
         transform.localRotation = Quaternion.Euler(_baseRotation);
     }
@@ -75,7 +94,7 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
             transform.localRotation = Quaternion.Slerp(transform.localRotation, _throwRotation, 0.75f);
 
             // if the weapon has reached its maximum distance, boomerang back to the weapon's owner
-            if (Vector3.Distance(transform.position, _lastThrownFrom) > MaxThrowDistance)
+            if (Vector3.Distance(transform.position, _lastThrownFrom) > _maxThrowDistance)
             {
                 ReturnTo(Owner);
             }
@@ -129,6 +148,23 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
             }
         }
     }
+
+    public void EnableDamage(bool state, AttackType type = AttackType.None)
+    {
+        if (state)
+        {
+            switch (type)
+            {
+                case AttackType.Standard:
+                    _hurtbox.SetDamage(_attackDamage);
+                    break;
+                case AttackType.Throw:
+                    _hurtbox.SetDamage(_throwDamage);
+                    break;
+            }
+        }
+        _hurtbox.gameObject.SetActive(state);
+    }
     
     public void Aim(bool state)
     {
@@ -154,7 +190,7 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
         // rotate towards the direction of the throw and accelerate in that direction
         transform.parent = null;
         _throwRotation = Quaternion.LookRotation(dir, Vector3.Cross(dir, Vector3.right));
-        _rb.velocity = dir * ThrowSpeed;
+        _rb.velocity = dir * _throwSpeed;
         IsHeld = false;
         IsThrown = true;
     }
@@ -181,6 +217,11 @@ public class PlayerWeapon : MonoBehaviour, IThrowable, IReturnable
     public bool CanTravel()
     {
         return !IsHeld && !IsReturning & !IsThrown;
+    }
+
+    public bool HitsTeam(TeamAffiliation team)
+    {
+        return _hurtbox.HitsTeam(team);
     }
 
     private void ReparentTo(Player player)

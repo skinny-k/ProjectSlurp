@@ -15,9 +15,25 @@ public class DamageVolume : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         IDamageable hit = other.GetComponent<IDamageable>();
-        if (hit != null && _hitsTeams.HasFlag(hit.GetTeam()))
+        if (hit != null && HitsTeam(hit.GetTeam()))
         {
-            hit.TakeDamage(_damageOnHit);
+            hit.TakeDamage(CalculateDamage());
         }
+    }
+
+    public void SetDamage(int dmg)
+    {
+        _damageOnHit = dmg;
+    }
+
+    protected int CalculateDamage()
+    {
+        // unused for now, will be helpful if/when damage modifications are implemented later
+        return _damageOnHit;
+    }
+
+    public bool HitsTeam(TeamAffiliation team)
+    {
+        return _hitsTeams.HasFlag(team);
     }
 }

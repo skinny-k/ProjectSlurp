@@ -7,11 +7,9 @@ using UnityEngine.AI;
 public class Enemy : Character
 {
     protected NavMeshAgent _nav;
-    protected Health _health;
     
     void OnEnable()
     {
         _nav = GetComponent<NavMeshAgent>();
-        _health = GetComponent<Health>();
     }
 }

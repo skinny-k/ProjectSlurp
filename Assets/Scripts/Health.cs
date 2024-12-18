@@ -1,12 +1,16 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// a character or anotehr object with health
+// a character or another object with health
+[RequireComponent(typeof(Collider))]
 public class Health : MonoBehaviour, IDamageable
 {
     [SerializeField] int _maxHealth = 10;
 
+    public event Action OnDie;
+    
     public int CurrentHealth { get; private set; }
     
     public int MaxHealth => _maxHealth;
@@ -27,34 +31,52 @@ public class Health : MonoBehaviour, IDamageable
         return _character != null ? _character.Team : TeamAffiliation.NonCharacter;
     }
 
-    public void TakeDamage(int amount)
+    // returns total health after damage
+    public int TakeDamage(int amount)
     {
-        ModifyHealth(-amount);
+        if (ModifyHealth(-amount) <= 0)
+        {
+            HandleDeath();
+            return 0;
+        }
+        else return CurrentHealth;
     }
 
-    public void TakeDamageByPercentage(float p)
+    // returns total health after damage
+    public int TakeDamageByPercentage(float p)
     {
         if (p >= 0f && p <= 1f)
         {
-            TakeDamage((int) Mathf.Round(_maxHealth * p));
+            return TakeDamage((int) Mathf.Round(_maxHealth * p));
         }
+        else return CurrentHealth;
     }
 
-    public void GainHealth(int amount)
+    // returns total health after gain
+    public int GainHealth(int amount)
     {
-        ModifyHealth(amount);
+        return ModifyHealth(amount);
     }
 
-    public void GainHealthByPercentage(float p)
+    // returns total health after gain
+    public int GainHealthByPercentage(float p)
     {
         if (p >= 0f && p <= 1f)
         {
-            GainHealth((int) Mathf.Round(_maxHealth * p));
+            return GainHealth((int) Mathf.Round(_maxHealth * p));
         }
+        else return CurrentHealth;
     }
 
-    protected void ModifyHealth(int mod)
+    // returns total health after modification
+    protected int ModifyHealth(int mod)
     {
         CurrentHealth = Mathf.Clamp(CurrentHealth + mod, 0, _maxHealth);
+        return CurrentHealth;
+    }
+
+    protected void HandleDeath()
+    {
+        OnDie?.Invoke();
     }
 }

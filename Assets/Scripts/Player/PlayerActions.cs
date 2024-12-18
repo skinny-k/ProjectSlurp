@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerActions : MonoBehaviour
 {
-    [Header("Weapon Settings")]
+    [Header("Combat Settings")]
     [SerializeField] public PlayerWeapon Weapon;
     // [SerializeField] float _throwSpeed = 50f;
     // [SerializeField] float _maxThrowDistance = 20f;
@@ -40,6 +40,27 @@ public class PlayerActions : MonoBehaviour
         if (Weapon.IsHeld && !_movement.IsInPrivilegedMove)
         {
             Debug.Log("Attack");
+            // animation should be implemented here
+
+            if (_movement.IsGrounded)
+            {
+                // TESTONLY
+                Collider[] hit = Physics.OverlapSphere(transform.position, 4f);
+                foreach (Collider col in hit)
+                {
+                    IDamageable dmg = col.GetComponent<IDamageable>();
+                    if (dmg != null && Weapon.HitsTeam(dmg.GetTeam()))
+                    {
+                        dmg.TakeDamage(Weapon.AttackDamage);
+                    }
+                }
+                // END TESTONLY
+            }
+            else
+            {
+                StartDive();
+            }
+
             // Play haptics if a hit occurs
             // HapticsManager.TimedRumble(_player.HapticsSettings.A_strength, _player.HapticsSettings.A_duration);
         }
@@ -50,6 +71,32 @@ public class PlayerActions : MonoBehaviour
             ForceWeaponReturn();
             StartCoroutine(RetryAttack());
         }
+    }
+
+    private void StartDive()
+    {
+        _movement.SetDiving(true);
+        _movement.OnHitGround += DiveImpact;
+    }
+
+    private void EndDive()
+    {
+        _movement.SetDiving(false);
+        _movement.OnHitGround -= DiveImpact;
+    }
+
+    private void DiveImpact()
+    {
+        Collider[] hit = Physics.OverlapSphere(transform.position, 4f);
+        foreach (Collider col in hit)
+        {
+            IDamageable dmg = col.GetComponent<IDamageable>();
+            if (dmg != null && Weapon.HitsTeam(dmg.GetTeam()))
+            {
+                dmg.TakeDamage(Weapon.DiveDamage);
+            }
+        }
+        EndDive();
     }
     
     public void Block()

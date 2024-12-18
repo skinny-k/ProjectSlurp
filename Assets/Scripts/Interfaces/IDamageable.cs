@@ -5,6 +5,6 @@ using UnityEngine;
 // interface for objects that can be damaged
 public interface IDamageable
 {
-    public void TakeDamage(int amount);
+    public int TakeDamage(int amount);
     public TeamAffiliation GetTeam();
 }
