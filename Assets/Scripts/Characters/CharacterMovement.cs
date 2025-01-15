@@ -76,7 +76,7 @@ public abstract class CharacterMovement : MonoBehaviour
         _ground.UpdateFromRaycastHit(_groundHit);
 
         // if character hit the ground this physics step
-        if (!IsGrounded && r)
+        if (!IsGrounded && r && !_ground.Steeper(_slopeTolerance))
         {
             HitGround(forced ? ySpeed : Mathf.Abs(_rb.velocity.y));
         }
@@ -130,7 +130,7 @@ public abstract class CharacterMovement : MonoBehaviour
         // modifier with key already exists
         catch (ArgumentException ex)
         {
-            Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
+            // Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
             return false;
         }
         RecalculateNetSpeedModifier();
