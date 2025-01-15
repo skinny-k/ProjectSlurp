@@ -6,31 +6,18 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // Handles player movement and movement abilities
-public class PlayerMovement : MonoBehaviour
-{
-    [Header("Basic Movement Settings")]
-    [SerializeField] float _moveSpeed = 5f;
-    [SerializeField] float _turnSpeed = 360f;
-    [Tooltip("The steepest slope the player can walk up.")]
-    [SerializeField][Range(0f, 90f)] float _slopeTolerance = 45f;
-    [SerializeField] float _groundCheckRadius = 0.85f;
-    [SerializeField] float _groundCheckPadding = 0.05f;
-
-    [Header("Gravity")]
+public class PlayerMovement : CharacterMovement
+{ 
+    [Header("Player Air Settings")]
     [Tooltip("The force of the custom gravity. It is recommended you use the same value listed in the Physics section of Project Settings.")]
-    [SerializeField] Vector3 _gravity = new Vector3(0, -9.81f, 0);
     [SerializeField] float _highJumpGravityModifier = 0.5f;
     [SerializeField] float _diveGravityModifier = 4f;
-
-    [Header("Aim Movement Settings")]
-    [SerializeField][Range(0f, 1f)] public float AimSpeedModifier = 0.5f;
-
-    [Header("Air Settings")]
-    [Tooltip("The speed reduction applied to the player while in the air.")]
-    [SerializeField][Range(0f, 1f)] float _airSpeedModifier = 1f;
     [SerializeField] float _slowFallVelocityY = 1f;
     [Tooltip("The speed reduction applied to the player while slow falling. Compounds with Air Speed Modifier.")]
     [SerializeField][Range(0f, 1f)] float _slowFallAirSpeedModifier = 0.5f;
+
+    [Header("Aim Movement Settings")]
+    [SerializeField][Range(0f, 1f)] public float AimSpeedModifier = 0.5f;
 
     [Header("Jump Settings")]
     [Tooltip("The number of jumps the player can make.")]
@@ -52,25 +39,16 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float _travelAcceleration = 35f;
     [SerializeField][Range(0f, 1f)] float _travelSpeedConservation = 0.5f;
 
-    public event Action OnHitGround;
-
     private InputManager _input;
     private Player _player;
     private PlayerActions _actions;
 
-    private Rigidbody _rb;
-    private CapsuleCollider _col;
-
-    private Dictionary<string, float> _speedModifiers = new Dictionary<string, float>();
-    private float _netSpeedModifier = 1f;
-    private string _airSModKey;
     private string _highJumpSModKey;
     private string _slowFallSModKey;
     
     private int _currentJumps = 0;
     private float _currentAirTime = 0f;
 
-    private Vector3 _targetRot;
     private Vector2 _moveInput;
     private Vector3 _moveDir = Vector3.zero;
 
@@ -78,15 +56,9 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 _dashDir;
     private float _dashTimer = 0f;
 
-    private GroundInfo _ground;
-    private RaycastHit _groundHit;
-    private float _groundCheckDistance;
-    private float _halfHeight;
-
     private HapticsManager.HapticEventInfo _slowFallHaptics;
     private HapticsManager.HapticEventInfo _travelHaptics;
     
-    public bool IsGrounded { get; private set; } = true;
     public bool IsHighJumping { get; private set; } = false;
     public bool IsSlowFalling { get; private set; } = false;
     public bool IsDashing { get; private set; } = false;
@@ -96,21 +68,16 @@ public class PlayerMovement : MonoBehaviour
     public bool IsInPrivilegedMove => IsDashing || IsTraveling;
     public bool IsInActiveAerial => IsHighJumping || IsSlowFalling;
     
-    void Start()
+    override protected void Start()
     {
+        base.Start();
+        
         _input = GetComponent<InputManager>();
         _player = GetComponent<Player>();
         _actions = GetComponent<PlayerActions>();
 
-        _rb = _player.Rb;
-        _col = GetComponent<CapsuleCollider>();
-
         _moveDir = transform.forward;
 
-        _halfHeight = (_col.height / 2) * transform.localScale.y;
-        _groundCheckDistance = _halfHeight - _groundCheckRadius + _groundCheckPadding;
-
-        _airSModKey = GetInstanceID() + "_air";
         _highJumpSModKey = GetInstanceID() + "_hij";
         _slowFallSModKey = GetInstanceID() + "_slf";
     }
@@ -124,7 +91,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void FixedUpdate()
+    override protected void FixedUpdate()
     {
         CheckGrounded();
 
@@ -144,7 +111,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void ApplyMovement()
+    override protected void ApplyMovement()
     {
         // get movement input
         _moveInput = _player.GetMove();
@@ -177,7 +144,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void ApplyGravity()
+    override protected void ApplyGravity()
     {
         if (!IsGrounded)
         {
@@ -192,38 +159,20 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private bool CheckGrounded(bool forced = false, float ySpeed = 0f)
+    override protected bool CheckGrounded(bool forced = false, float ySpeed = 0f)
     {
-        bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"));
-        _ground.UpdateFromRaycastHit(_groundHit);
-
-        // if player hit the ground this physics step
-        if (!IsGrounded && r)
-        {
-            _currentAirTime = 0f;
-            HitGround(forced ? ySpeed : Mathf.Abs(_rb.velocity.y));
-        }
-        // if player left the ground
-        else if (IsGrounded && !r)
-        {
-            _currentAirTime += Time.fixedDeltaTime;
-            AddSpeedModifier(_airSModKey, _airSpeedModifier);
-        }
-        // if player is in the air
-        else if (!r)
+        if (!base.CheckGrounded(forced, ySpeed))
         {
             _currentAirTime += Time.fixedDeltaTime;
         }
-        IsGrounded = r;
         return IsGrounded;
     }
 
-    void HitGround(float ySpeed)
+    override protected void HitGround(float ySpeed)
     {
         _currentJumps = 0;
         IsHighJumping = false;
         SlowFall(false);
-        RemoveSpeedModifier(_airSModKey);
 
         _canDash = true;
 
@@ -234,14 +183,10 @@ public class PlayerMovement : MonoBehaviour
             HapticsManager.TimedRumble(_player.HapticsSettings.D_strength * str, _player.HapticsSettings.D_duration);
         }
 
-        // prevent any bouncing from happening
-        _rb.velocity = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
-
-        Debug.Log("Hit the Ground!");
-        OnHitGround?.Invoke();
+        base.HitGround(ySpeed);
     }
 
-    void OnCollisionEnter(Collision collision)
+    override protected void OnCollisionEnter(Collision collision)
     {
         // TODO: Add haptic feedback for collision?
         
@@ -423,101 +368,5 @@ public class PlayerMovement : MonoBehaviour
     public void SetDiving(bool state)
     {
         IsDiving = state;
-    }
-
-    // helper functions to forcibly adjust the rotation the player should be facing in
-    // used when rotating the player while aiming
-    public void AddRotation(Vector2 input, float sensitivity)
-    {
-        _targetRot += new Vector3(0, input.x * sensitivity * Time.deltaTime, 0);
-    }
-
-    public void RotateTo(Vector3 rotation)
-    {
-        _targetRot = rotation;
-    }
-
-    // helper functions to apply and remove multiple speed modifiers more easily
-    public bool AddSpeedModifier(string key, float modifier)
-    {
-        try
-        {
-            _speedModifiers.Add(key, modifier);
-        }
-        // modifier with key already exists
-        catch (ArgumentException ex)
-        {
-            Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
-            return false;
-        }
-        RecalculateNetSpeedModifier();
-        return true;
-    }
-
-    public IEnumerator AddSpeedModifierWithDuration(string key, float modifier, float duration)
-    {
-        if (AddSpeedModifier(key, modifier))
-        {
-            yield return new WaitForSeconds(duration);
-
-            RemoveSpeedModifier(key);
-        }
-        yield return null;
-    }
-
-    public float SetSpeedModifier(string key, float modifier)
-    {
-        _speedModifiers[key] = modifier;
-        RecalculateNetSpeedModifier();
-        return _speedModifiers[key];
-    }
-
-    public void RemoveSpeedModifier(string key)
-    {
-        _speedModifiers.Remove(key);
-        RecalculateNetSpeedModifier();
-    }
-
-    private void RecalculateNetSpeedModifier()
-    {
-        _netSpeedModifier = 1f;
-        foreach (float modifier in _speedModifiers.Values)
-        {
-            // don't bother calculating if the modifier is one
-            if (modifier == 1f)
-            {
-                continue;
-            }
-
-            _netSpeedModifier *= modifier;
-            // if _netSpeedModifier is ever 0, it won't ever increase, so end the calculation
-            if (_netSpeedModifier == 0)
-            {
-                return;
-            }
-        }
-    }
-
-    internal struct GroundInfo
-    {
-        public bool hit;
-        public Collider collider;
-        public Vector3 point;
-        public Vector3 normal;
-        public float angle;
-
-        public void UpdateFromRaycastHit(RaycastHit hit)
-        {
-            this.hit = hit.transform != null;
-            this.collider = hit.collider;
-            this.point = hit.point;
-            normal = hit.normal;
-            angle = Vector3.Angle(normal, Vector3.up);
-        }
-
-        public bool Steeper(float angle)
-        {
-            return hit && this.angle > angle;
-        }
     }
 }
