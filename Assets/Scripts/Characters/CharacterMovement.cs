@@ -72,7 +72,7 @@ public abstract class CharacterMovement : MonoBehaviour
 
     virtual protected bool CheckGrounded(bool forced = false, float ySpeed = 0f)
     {
-        bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"));
+        bool r = Physics.SphereCast(transform.position, _groundCheckRadius, Vector3.down, out _groundHit, _groundCheckDistance, ~LayerMask.NameToLayer("Environment"), QueryTriggerInteraction.Ignore);
         _ground.UpdateFromRaycastHit(_groundHit);
 
         // if character hit the ground this physics step
@@ -85,7 +85,7 @@ public abstract class CharacterMovement : MonoBehaviour
         {
             AddSpeedModifier(_airSModKey, _airSpeedModifier);
         }
-        IsGrounded = r;
+        IsGrounded = r && !_ground.Steeper(_slopeTolerance);
         return IsGrounded;
     }
 
@@ -102,7 +102,7 @@ public abstract class CharacterMovement : MonoBehaviour
 
     virtual protected void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
+        if (!collision.collider.isTrigger && collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
             CheckGrounded(true, Mathf.Abs(collision.relativeVelocity.y));
         }
@@ -130,7 +130,7 @@ public abstract class CharacterMovement : MonoBehaviour
         // modifier with key already exists
         catch (ArgumentException ex)
         {
-            // Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
+            Debug.LogWarning("Speed modifier with key '" + key + "' already exists. Logging warning:\n" + ex.Message);
             return false;
         }
         RecalculateNetSpeedModifier();
